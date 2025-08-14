@@ -1,0 +1,22 @@
+[general]
+name=Canchas Las Tortolas
+qgisMinimumVersion=3.0
+description=Plugin para procesamiento topográfico de canchas Las Tortolas
+version=1.0.0
+author=titoruizh
+email=titoruizh@example.com
+
+about=Plugin especializado para el procesamiento topográfico de datos de canchas Las Tortolas. 
+    Incluye validación de archivos, procesamiento espacial, cálculo de volúmenes, 
+    generación de pantallazos y exportación a XML.
+
+tracker=https://github.com/titoruizh/PLUGIN_Canchas_Las_Tortolas/issues
+repository=https://github.com/titoruizh/PLUGIN_Canchas_Las_Tortolas
+
+tags=topografia, procesamiento, volumen, xml, validation
+homepage=https://github.com/titoruizh/PLUGIN_Canchas_Las_Tortolas
+category=Plugins
+icon=resources/icon.png
+
+experimental=False
+deprecated=False
