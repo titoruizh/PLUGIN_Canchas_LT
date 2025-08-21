@@ -203,14 +203,14 @@ class ProcessingProcessor:
 
     def procesar_asc(self, asc_path, base, project, puntos_group, poligonos_group, triangulaciones_group):
         """
-        Nuevo flujo ASC:
-        - Carga el raster ASC y lo agrega solo a Triangulaciones.
-        - Vectoriza, suaviza y extrae 4 vértices extremos, agregando el polígono suavizado
-          al grupo Poligonos y los puntos extremos (con cota desde raster) al grupo Puntos.
-        - Usa el nombre base del archivo para todas las capas.
+        Nuevo flujo ASC MEJORADO:
+        - Carga el raster ASC y lo agrega a Triangulaciones
+        - Vectoriza, suaviza y extrae polígono
+        - Genera MÚLTIPLES PUNTOS a lo largo del perímetro y superficie del ASC
+        - Crea una capa de puntos densa que permita mejor triangulación
         """
         if not os.path.exists(asc_path):
-            self.log_callback(f"❌ No existe ASC procesado: {asc_path}")
+            self.log_callback(f"No existe ASC procesado: {asc_path}")
             return
         
         # 1. Cargar raster ASC y agregar SOLO a Triangulaciones
@@ -218,11 +218,11 @@ class ProcessingProcessor:
         if asc_layer_obj.isValid():
             project.addMapLayer(asc_layer_obj, False)
             node = triangulaciones_group.addLayer(asc_layer_obj)
-            node.setItemVisibilityChecked(False)  # Apagar la capa
-            node.setExpanded(False)  # Contraer las bandas
-            self.log_callback(f"🗺️ ASC agregado a Triangulaciones (apagado y contraído): {base}")
+            node.setItemVisibilityChecked(False)
+            node.setExpanded(False)
+            self.log_callback(f"ASC agregado a Triangulaciones (apagado y contraído): {base}")
         else:
-            self.log_callback(f"❌ ASC inválido: {asc_path}")
+            self.log_callback(f"ASC inválido: {asc_path}")
             return
 
         # 2. Vectorizar raster ASC a polígono
@@ -250,46 +250,25 @@ class ProcessingProcessor:
         })
         poligono_unido = dissolve_result['OUTPUT']
 
-        # 4. Suavizar polígono usando parámetro de la GUI
+        # 4. Suavizar polígono
         result_suavizado = processing.run("qgis:simplifygeometries", {
             'INPUT': poligono_unido,
-            'METHOD': 0,     # Distance method
-            'TOLERANCE': self.SUAVIZADO_TOLERANCE_ASC,  # Usar parámetro de la GUI
+            'METHOD': 0,
+            'TOLERANCE': self.SUAVIZADO_TOLERANCE_ASC,
             'OUTPUT': 'memory:Poligono_Suavizado'
         })
         suavizado_layer = result_suavizado['OUTPUT']
         suavizado_layer.setName(base)
         project.addMapLayer(suavizado_layer, False)
         node = poligonos_group.addLayer(suavizado_layer)
-        node.setItemVisibilityChecked(False)  # Apagar la capa
-        self.log_callback(f"✔️ Polígono suavizado agregado a Poligonos (apagado): {base}")
+        node.setItemVisibilityChecked(False)
+        self.log_callback(f"Polígono suavizado agregado a Polígonos (apagado): {base}")
 
-        # 5. Extraer 4 vértices extremos y obtener cota desde raster
-        def punto_distinto(base_pts, otros, min_dist=self.MIN_DIST_VERTICES_ASC):  # Usar parámetro de la GUI
-            for pt in base_pts:
-                if all(((pt.x()-o.x())**2 + (pt.y()-o.y())**2)**0.5 >= min_dist for o in otros):
-                    return pt
-            return base_pts[0]  # Si todos están cerca, devuelve el primero
-
-        feature = next(suavizado_layer.getFeatures())
-        geom = feature.geometry()
-        if geom.isMultipart():
-            polygon = geom.asMultiPolygon()[0][0]
-        else:
-            polygon = geom.asPolygon()[0]
-        vertices = [QgsPointXY(pt) for pt in polygon]
-
-        left_candidates = sorted(vertices, key=lambda p: p.x())
-        left = punto_distinto(left_candidates, [], self.MIN_DIST_VERTICES_ASC)
-        right_candidates = sorted(vertices, key=lambda p: -p.x())
-        right = punto_distinto(right_candidates, [left], self.MIN_DIST_VERTICES_ASC)
-        top_candidates = sorted(vertices, key=lambda p: -p.y())
-        top = punto_distinto(top_candidates, [left, right], self.MIN_DIST_VERTICES_ASC)
-        bottom_candidates = sorted(vertices, key=lambda p: p.y())
-        bottom = punto_distinto(bottom_candidates, [left, right, top], self.MIN_DIST_VERTICES_ASC)
-        extremos = [left, right, top, bottom]
-
-        # Crear capa de puntos con campos estándar
+        # 5. NUEVA FUNCIONALIDAD: Generar puntos densos del ASC
+        puntos_densos = self.generar_puntos_densos_asc(asc_layer_obj, suavizado_layer, base)
+        
+        
+        # 6. Crear capa de puntos con los puntos densos
         fields = [
             QgsField("field_1", QVariant.Int),
             QgsField("field_2", QVariant.Double),
@@ -304,24 +283,173 @@ class ProcessingProcessor:
         pr.addAttributes(fields)
         puntos_layer.updateFields()
 
-        for idx, extremo in enumerate(extremos, 1):
-            z = self.obtener_valor_raster(asc_layer_obj, extremo, max_radio=1.0)
+        # 7. Agregar todos los puntos densos a la capa
+        for idx, punto_info in enumerate(puntos_densos, 1):
+            punto_xy, z = punto_info
             f = QgsFeature(puntos_layer.fields())
-            # Limitar a 3 decimales
-            f.setGeometry(QgsGeometry.fromPointXY(extremo))
+            f.setGeometry(QgsGeometry.fromPointXY(punto_xy))
             f.setAttribute("field_1", idx)
-            f.setAttribute("field_2", round(extremo.y(), 3))  # Y
-            f.setAttribute("field_3", round(extremo.x(), 3))  # X
+            f.setAttribute("field_2", round(punto_xy.y(), 3))  # Y
+            f.setAttribute("field_3", round(punto_xy.x(), 3))  # X
             f.setAttribute("field_4", round(z, 3) if z is not None else -9999)  # Z
             f.setAttribute("field_5", base)
             pr.addFeature(f)
-            self.log_callback(f"Extremo {idx}: ({round(extremo.x(),3)}, {round(extremo.y(),3)}, cota: {round(z,3) if z is not None else 'No encontrada'})")
 
         puntos_layer.updateExtents()
         project.addMapLayer(puntos_layer, False)
         node = puntos_group.addLayer(puntos_layer)
-        node.setItemVisibilityChecked(False)  # Apagar la capa
-        self.log_callback(f"✔️ Capa de puntos extremos agregada a Puntos (apagado): {base}")
+        node.setItemVisibilityChecked(False)
+        self.log_callback(f"Capa de puntos densos agregada a Puntos (apagado): {base} - {len(puntos_densos)} puntos")
+
+
+    def generar_puntos_perimetro(self, polygon_vertices, asc_layer_obj, distancia_puntos=5.0):
+        """
+        Generar puntos equidistantes a lo largo del perímetro del polígono
+        """
+        puntos_perimetro = []
+        vertices = [QgsPointXY(pt) for pt in polygon_vertices[:-1]]  # Excluir último punto (cierre)
+        
+        for i in range(len(vertices)):
+            inicio = vertices[i]
+            fin = vertices[(i + 1) % len(vertices)]
+            
+            # Calcular distancia entre vértices
+            dist_total = ((fin.x() - inicio.x())**2 + (fin.y() - inicio.y())**2)**0.5
+            
+            # Generar puntos intermedios si la distancia es mayor a distancia_puntos
+            if dist_total > distancia_puntos:
+                num_puntos = int(dist_total / distancia_puntos)
+                for j in range(num_puntos + 1):
+                    t = j / max(num_puntos, 1)
+                    x = inicio.x() + t * (fin.x() - inicio.x())
+                    y = inicio.y() + t * (fin.y() - inicio.y())
+                    punto = QgsPointXY(x, y)
+                    z = self.obtener_valor_raster(asc_layer_obj, punto)
+                    if z is not None:
+                        puntos_perimetro.append((punto, z))
+            else:
+                # Si la distancia es corta, solo agregar el vértice inicio
+                z = self.obtener_valor_raster(asc_layer_obj, inicio)
+                if z is not None:
+                    puntos_perimetro.append((inicio, z))
+        
+        return puntos_perimetro
+
+    def generar_puntos_densos_asc(self, asc_layer_obj, poligono_layer, base):
+        """
+        Generar puntos densos para mejor representación de la superficie ASC.
+        Incluye:
+        1. Puntos del perímetro del polígono
+        2. Puntos de una grilla interior
+        3. Puntos de características topográficas importantes
+        """
+        puntos_densos = []
+        
+        # Obtener geometría del polígono suavizado
+        feature = next(poligono_layer.getFeatures())
+        geom = feature.geometry()
+        if geom.isMultipart():
+            polygon = geom.asMultiPolygon()[0][0]
+        else:
+            polygon = geom.asPolygon()[0]
+        
+        # 1. PUNTOS DEL PERÍMETRO
+        # Generar puntos equidistantes a lo largo del perímetro
+        puntos_perimetro = self.generar_puntos_perimetro(polygon, asc_layer_obj)
+        puntos_densos.extend(puntos_perimetro)
+        
+        # 2. PUNTOS DE GRILLA INTERIOR
+        # Crear una grilla de puntos dentro del polígono
+        puntos_grilla = self.generar_puntos_grilla_interior(geom, asc_layer_obj)
+        puntos_densos.extend(puntos_grilla)
+        
+        # 3. PUNTOS DE CARACTERÍSTICAS TOPOGRÁFICAS
+        # Detectar puntos con cambios significativos de elevación
+        puntos_caracteristicas = self.detectar_puntos_caracteristicas(geom, asc_layer_obj)
+        puntos_densos.extend(puntos_caracteristicas)
+        
+        self.log_callback(f"Puntos generados - Perímetro: {len(puntos_perimetro)}, Grilla: {len(puntos_grilla)}, Características: {len(puntos_caracteristicas)}")
+        
+        return puntos_densos
+    
+    def detectar_puntos_caracteristicas(self, poligono_geom, asc_layer_obj, umbral_pendiente=0.5):
+        """
+        Detectar puntos con características topográficas importantes
+        (cambios bruscos de elevación, picos, valles)
+        """
+        puntos_caracteristicas = []
+        
+        # Obtener información del raster
+        provider = asc_layer_obj.dataProvider()
+        extent = asc_layer_obj.extent()
+        width = asc_layer_obj.width()
+        height = asc_layer_obj.height()
+        pixel_size_x = extent.width() / width
+        pixel_size_y = extent.height() / height
+        
+        # Analizar gradientes en el raster
+        step = max(1, min(width, height) // 50)  # Muestreo adaptativo
+        
+        for row in range(step, height - step, step):
+            for col in range(step, width - step, step):
+                x = extent.xMinimum() + (col + 0.5) * pixel_size_x
+                y = extent.yMaximum() - (row + 0.5) * pixel_size_y
+                punto = QgsPointXY(x, y)
+                punto_geom = QgsGeometry.fromPointXY(punto)
+                
+                # Solo procesar puntos dentro del polígono
+                if poligono_geom.contains(punto_geom):
+                    z_centro = self.obtener_valor_raster(asc_layer_obj, punto)
+                    if z_centro is None:
+                        continue
+                    
+                    # Calcular gradiente con puntos vecinos
+                    gradiente_max = 0
+                    vecinos = [
+                        (x + pixel_size_x, y), (x - pixel_size_x, y),
+                        (x, y + pixel_size_y), (x, y - pixel_size_y)
+                    ]
+                    
+                    for vx, vy in vecinos:
+                        z_vecino = self.obtener_valor_raster(asc_layer_obj, QgsPointXY(vx, vy))
+                        if z_vecino is not None:
+                            distancia = ((vx - x)**2 + (vy - y)**2)**0.5
+                            gradiente = abs(z_vecino - z_centro) / distancia
+                            gradiente_max = max(gradiente_max, gradiente)
+                    
+                    # Si el gradiente supera el umbral, es un punto característico
+                    if gradiente_max > umbral_pendiente:
+                        puntos_caracteristicas.append((punto, z_centro))
+        
+        return puntos_caracteristicas
+
+    def generar_puntos_grilla_interior(self, poligono_geom, asc_layer_obj, espaciado=10.0):
+        """
+        Generar una grilla de puntos dentro del polígono
+        """
+        puntos_grilla = []
+        
+        # Obtener bbox del polígono
+        bbox = poligono_geom.boundingBox()
+        
+        # Generar grilla de puntos
+        x = bbox.xMinimum()
+        while x <= bbox.xMaximum():
+            y = bbox.yMinimum()
+            while y <= bbox.yMaximum():
+                punto = QgsPointXY(x, y)
+                punto_geom = QgsGeometry.fromPointXY(punto)
+                
+                # Verificar si el punto está dentro del polígono
+                if poligono_geom.contains(punto_geom):
+                    z = self.obtener_valor_raster(asc_layer_obj, punto)
+                    if z is not None:
+                        puntos_grilla.append((punto, z))
+                
+                y += espaciado
+            x += espaciado
+        
+        return puntos_grilla
 
     def procesar_csv(self, csv_path, base, project, puntos_group, poligonos_group, triangulaciones_group):
         uri = f"file:///{csv_path}?type=csv&delimiter={self.DELIMITER}&skipLines={self.SKIP_LINES}&useHeader={self.USE_HEADER}&maxFields=10000&detectTypes=yes&xField={self.X_FIELD}&yField={self.Y_FIELD}&zField={self.Z_FIELD}&crs={self.CRS}&spatialIndex=no&subsetIndex=no&watchFile=no"

@@ -1,21 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-/***************************************************************************
- XML export module for Canchas Las Tortolas plugin
-                                 A QGIS plugin
- Plugin para procesamiento de canchas Las Tortolas - Linkapsis
-                             -------------------
-        begin                : 2024-08-13
-        git sha              : $Format:%H$
-        copyright            : (C) 2024 by Linkapsis
-        email                : info@linkapsis.com
- ***************************************************************************/
-"""
-
-# -*- coding: utf-8 -*-
-"""
 Módulo de exportación XML para Canchas Las Tortolas
-Adaptado del script standalone 3.4_XML.py - VERSIÓN COMPLETA
+CON FILTRADO POR LONGITUD MÁXIMA DE TRIÁNGULOS
 """
 
 import os
@@ -27,10 +13,10 @@ from qgis.core import (
 from scipy.spatial import Delaunay
 
 class XMLExportProcessor:
-    """Procesador de exportación XML completo - TODAS las funciones del script original"""
+    """Procesador de exportación XML con filtrado por longitud máxima de triángulos"""
     
     def __init__(self, proc_root, swap_xy=True, raster_sample_step=2, 
-                 progress_callback=None, log_callback=None):
+                 max_triangle_length=40.0, progress_callback=None, log_callback=None):
         """
         Inicializar procesador con parámetros de la GUI
         
@@ -38,6 +24,7 @@ class XMLExportProcessor:
             proc_root: Carpeta raíz de procesamiento (PROC_ROOT)
             swap_xy: Intercambiar coordenadas X-Y en la exportación (default True)
             raster_sample_step: Paso de muestreo para rasters ASC (default 2)
+            max_triangle_length: Longitud máxima permitida para lados de triángulos en metros (default 40.0)
             progress_callback: Función callback para actualizar progreso
             log_callback: Función callback para logs
         """
@@ -47,6 +34,7 @@ class XMLExportProcessor:
         # Parámetros configurables desde GUI
         self.swap_xy = swap_xy
         self.RASTER_SAMPLE_STEP = raster_sample_step
+        self.MAX_TRIANGLE_LENGTH = max_triangle_length  # NUEVO PARÁMETRO
         
         # Callbacks
         self.progress_callback = progress_callback or (lambda x, msg="": None)
@@ -92,19 +80,62 @@ class XMLExportProcessor:
         return points
 
     # ============================================================
-    # FUNCIONES DE EXPORTACIÓN XML DEL SCRIPT ORIGINAL
+    # NUEVA FUNCIÓN: FILTRAR TRIÁNGULOS POR LONGITUD MÁXIMA
+    # ============================================================
+
+    def filtrar_triangulos_por_longitud(self, points, faces):
+        """
+        Filtrar triángulos eliminando aquellos que tienen lados más largos 
+        que la longitud máxima permitida.
+        
+        Args:
+            points: Array numpy de puntos [x, y, z]
+            faces: Array de índices de triángulos
+            
+        Returns:
+            faces_filtradas: Array con solo los triángulos válidos
+        """
+        faces_validas = []
+        total_triangulos = len(faces)
+        triangulos_eliminados = 0
+        
+        for face in faces:
+            # Obtener los tres vértices del triángulo
+            p1 = points[face[0]]
+            p2 = points[face[1]]
+            p3 = points[face[2]]
+            
+            # Calcular las tres longitudes de los lados
+            lado1 = np.sqrt((p2[0] - p1[0])**2 + (p2[1] - p1[1])**2)
+            lado2 = np.sqrt((p3[0] - p2[0])**2 + (p3[1] - p2[1])**2)
+            lado3 = np.sqrt((p1[0] - p3[0])**2 + (p1[1] - p3[1])**2)
+            
+            # Verificar si todos los lados son menores o iguales a la longitud máxima
+            if (lado1 <= self.MAX_TRIANGLE_LENGTH and 
+                lado2 <= self.MAX_TRIANGLE_LENGTH and 
+                lado3 <= self.MAX_TRIANGLE_LENGTH):
+                faces_validas.append(face)
+            else:
+                triangulos_eliminados += 1
+        
+        self.log_callback(f"Filtrado por longitud: {triangulos_eliminados}/{total_triangulos} triángulos eliminados (>{self.MAX_TRIANGLE_LENGTH}m)")
+        
+        return np.array(faces_validas) if faces_validas else np.array([])
+
+    # ============================================================
+    # FUNCIONES DE EXPORTACIÓN XML MODIFICADAS
     # ============================================================
 
     def generar_archivos_xml(self, levantamientos_layer, puntos_layers, raster_layers, csv_paths=None):
-        self.log_callback("✔️ Iniciando generación de archivos XML...")
+        self.log_callback("Iniciando generación de archivos XML con filtrado por longitud máxima...")
         
         # Asegurar que existe la carpeta XML
         if not os.path.exists(self.CARPETA_XML):
             try:
                 os.makedirs(self.CARPETA_XML)
-                self.log_callback(f"✔️ Carpeta creada: {self.CARPETA_XML}")
+                self.log_callback(f"Carpeta creada: {self.CARPETA_XML}")
             except Exception as e:
-                self.log_callback(f"❌ Error al crear la carpeta {self.CARPETA_XML}: {e}")
+                self.log_callback(f"Error al crear la carpeta {self.CARPETA_XML}: {e}")
                 return 0
 
         # Obtener lista de levantamientos a procesar
@@ -121,7 +152,7 @@ class XMLExportProcessor:
             base = os.path.splitext(os.path.basename(nombre_archivo))[0]
             
             self.progress_callback(progreso, f"Procesando {base}...")
-            self.log_callback(f"🟢 Procesando levantamiento: {base} ({nombre_archivo})")
+            self.log_callback(f"Procesando levantamiento: {base} ({nombre_archivo})")
             
             archivo_xml = os.path.join(self.CARPETA_XML, f"{base}.xml")
             
@@ -132,7 +163,7 @@ class XMLExportProcessor:
                 if nombre_archivo.lower().endswith(".csv"):
                     puntos_layer = puntos_layers.get(base)
                     if not puntos_layer:
-                        self.log_callback(f"❌ No se encontró capa de puntos para {base}")
+                        self.log_callback(f"No se encontró capa de puntos para {base}")
                         continue
                     
                     campo_cota = "field_4"
@@ -146,13 +177,13 @@ class XMLExportProcessor:
                                 else:
                                     points.append([geom.x(), geom.y(), z])
                         except KeyError:
-                            self.log_callback(f"⚠️ El campo '{campo_cota}' no existe en la capa de puntos para {base}")
+                            self.log_callback(f"El campo '{campo_cota}' no existe en la capa de puntos para {base}")
                             continue
 
                 elif nombre_archivo.lower().endswith(".asc"):
                     raster_layer = raster_layers.get(base)
                     if not raster_layer:
-                        self.log_callback(f"❌ No se encontró capa raster para {base}")
+                        self.log_callback(f"No se encontró capa raster para {base}")
                         continue
                     
                     points = self.muestrear_puntos_raster(raster_layer, step=self.RASTER_SAMPLE_STEP)
@@ -160,12 +191,12 @@ class XMLExportProcessor:
                         points = [[p[1], p[0], p[2]] for p in points]
 
                 else:
-                    self.log_callback(f"❌ Archivo no reconocido: {nombre_archivo} (solo .csv o .asc)")
+                    self.log_callback(f"Archivo no reconocido: {nombre_archivo} (solo .csv o .asc)")
                     continue
 
                 # Validar que tenemos suficientes puntos
                 if len(points) < 3:
-                    self.log_callback(f"❌ No se encontraron puntos suficientes para {base}")
+                    self.log_callback(f"No se encontraron puntos suficientes para {base}")
                     continue
 
                 # Convertir a numpy array y generar triangulación
@@ -174,16 +205,28 @@ class XMLExportProcessor:
                 tri = Delaunay(points_2d)
                 faces = tri.simplices
 
+                self.log_callback(f"Triangulación Delaunay inicial: {len(faces)} triángulos")
+
+                # NUEVO: Filtrar triángulos por longitud máxima
+                faces = self.filtrar_triangulos_por_longitud(points, faces)
+
+                # Validar que quedaron triángulos después del filtrado
+                if len(faces) == 0:
+                    self.log_callback(f"No quedaron triángulos válidos después del filtrado para {base}")
+                    continue
+
                 # Debug: mostrar primeros puntos
                 self.log_callback("Primeros 5 puntos a exportar (X Y Z):")
                 for idx, pt in enumerate(points[:5]):
                     self.log_callback(f"Punto {idx+1}: X={pt[0]}, Y={pt[1]}, Z={pt[2]}")
 
-                # Calcular áreas y elevaciones
+                # Calcular áreas y elevaciones con triángulos filtrados
                 area2d = sum(self.area_2d(points[face, :2]) for face in faces)
                 area3d = sum(self.area_3d(points[face]) for face in faces)
                 elev_min = float(np.min(points[:, 2]))
                 elev_max = float(np.max(points[:, 2]))
+
+                self.log_callback(f"Triángulos finales: {len(faces)} (longitud máx: {self.MAX_TRIANGLE_LENGTH}m)")
 
                 # Generar XML
                 success = self._generar_xml_landxml(base, points, faces, area2d, area3d, 
@@ -192,9 +235,9 @@ class XMLExportProcessor:
                     exitosos += 1
 
             except Exception as e:
-                self.log_callback(f"❌ Error al generar XML para {base}: {e}")
+                self.log_callback(f"Error al generar XML para {base}: {e}")
 
-        self.log_callback(f"✔️ Generación de archivos XML completada: {exitosos}/{total_levantamientos} exitosos.")
+        self.log_callback(f"Generación de archivos XML completada: {exitosos}/{total_levantamientos} exitosos.")
         return exitosos
 
     def _generar_xml_landxml(self, base, points, faces, area2d, area3d, elev_min, elev_max, 
@@ -256,14 +299,14 @@ class XMLExportProcessor:
 
             # Verificar que se creó
             if os.path.exists(archivo_xml):
-                self.log_callback(f"✔️ Archivo XML exportado para {base}: {archivo_xml}")
+                self.log_callback(f"Archivo XML exportado para {base}: {archivo_xml}")
                 return True
             else:
-                self.log_callback(f"❌ Error: No se creó el archivo XML para {base}: Archivo no encontrado en disco")
+                self.log_callback(f"Error: No se creó el archivo XML para {base}: Archivo no encontrado en disco")
                 return False
 
         except Exception as e:
-            self.log_callback(f"❌ Error al escribir XML para {base}: {e}")
+            self.log_callback(f"Error al escribir XML para {base}: {e}")
             return False
 
     # ============================================================
@@ -274,12 +317,12 @@ class XMLExportProcessor:
         """Ejecutar todo el proceso de exportación XML - MÉTODO PRINCIPAL"""
         try:
             self.progress_callback(5, "Iniciando exportación XML...")
-            self.log_callback("📄 Iniciando exportación a LandXML...")
+            self.log_callback(f"Iniciando exportación a LandXML con longitud máxima de triángulos: {self.MAX_TRIANGLE_LENGTH}m")
 
             # Asegurar que existe la carpeta XML
             if not os.path.exists(self.CARPETA_XML):
                 os.makedirs(self.CARPETA_XML)
-                self.log_callback(f"📁 Carpeta creada: {self.CARPETA_XML}")
+                self.log_callback(f"Carpeta creada: {self.CARPETA_XML}")
 
             # Buscar la capa Levantamientos en el proyecto
             self.progress_callback(10, "Buscando capa de levantamientos...")
@@ -360,7 +403,7 @@ class XMLExportProcessor:
                 csv_paths=csv_paths
             )
 
-            self.progress_callback(100, "¡Exportación XML completada!")
+            self.progress_callback(100, "Exportación XML completada!")
 
             total_levantamientos = levantamientos_layer.featureCount()
             return {
@@ -368,15 +411,16 @@ class XMLExportProcessor:
                 'message': f'Exportación XML completada exitosamente: {exitosos}/{total_levantamientos} archivos.',
                 'archivos_exitosos': exitosos,
                 'total_archivos': total_levantamientos,
-                'carpeta_salida': self.CARPETA_XML
+                'carpeta_salida': self.CARPETA_XML,
+                'max_triangle_length': self.MAX_TRIANGLE_LENGTH
             }
 
         except Exception as e:
             import traceback
             error_msg = f"Error durante la exportación XML: {str(e)}"
             error_details = traceback.format_exc()
-            self.log_callback(f"❌ {error_msg}")
-            self.log_callback(f"📋 Detalles del error:\n{error_details}")
+            self.log_callback(f"{error_msg}")
+            self.log_callback(f"Detalles del error:\n{error_details}")
             return {
                 'success': False,
                 'message': error_msg,
