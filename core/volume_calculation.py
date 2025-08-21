@@ -475,99 +475,141 @@ class VolumeCalculationProcessor:
     # ============================================================
 
     def ejecutar_calculo_volumenes_completo(self):
-        """Ejecutar todo el proceso de cálculo de volúmenes - MÉTODO PRINCIPAL"""
+        """
+        REEMPLAZA tu método actual con este que usa la validación corregida
+        """
         try:
-            self.progress_callback(5, "Iniciando cálculo de volúmenes...")
-            self.log_callback("📊 Iniciando cálculo de volúmenes y espesores...")
+            # Crear validador CORREGIDO
+            validator = CorrectedTinValidation(self)
+            
+            self.progress_callback(5, "Iniciando cálculo con validación CORREGIDA...")
+            self.log_callback("🔧 Cálculo de volúmenes CON VALIDACIÓN CORREGIDA...")
 
-            # Verificar que existe el grupo de procesamiento
-            self.progress_callback(10, "Verificando grupos de procesamiento...")
+            # ... (mismo código de inicialización que antes) ...
+            
             project = QgsProject.instance()
             fecha_proc = datetime.now().strftime("%y%m%d")
             group_name = f"Procesamiento_{fecha_proc}"
             root = project.layerTreeRoot()
             group = root.findGroup(group_name)
             if not group:
-                return {
-                    'success': False,
-                    'message': f'Grupo "{group_name}" no encontrado. Debe ejecutar el procesamiento espacial primero.'
-                }
+                return {'success': False, 'message': f'Grupo "{group_name}" no encontrado.'}
 
-            # Verificar subgrupos
-            self.progress_callback(15, "Verificando subgrupos...")
             poligonos_group = group.findGroup("Poligonos")
             triangulaciones_group = group.findGroup("Triangulaciones")
             if not poligonos_group or not triangulaciones_group:
-                return {
-                    'success': False,
-                    'message': 'Subgrupos "Poligonos" o "Triangulaciones" no encontrados.'
-                }
+                return {'success': False, 'message': 'Subgrupos no encontrados.'}
 
-            # Obtener capas de los subgrupos
-            self.progress_callback(20, "Obteniendo capas de subgrupos...")
             poligonos_layers = {l.name(): l.layer() for l in poligonos_group.findLayers() if l.layer().type() == QgsMapLayer.VectorLayer}
             triangulaciones_layers = {l.name(): l.layer() for l in triangulaciones_group.findLayers() if l.layer().type() == QgsMapLayer.RasterLayer}
 
-            self.log_callback("Capas en Poligonos: " + str(list(poligonos_layers.keys())))
-            self.log_callback("Capas en Triangulaciones: " + str(list(triangulaciones_layers.keys())))
-
-            # Mapeo de DEMs
             dem_map = {"MP": "DEM_MP", "MO": "DEM_MO", "ME": "DEM_ME"}
 
-            # Buscar tabla base de datos
-            self.progress_callback(25, "Buscando tabla base de datos...")
             tabla = None
             for layer in project.mapLayers().values():
                 if layer.name() == "Tabla Base Datos":
                     tabla = layer
                     break
             if not tabla:
-                return {
-                    'success': False,
-                    'message': 'Tabla "Tabla Base Datos" no encontrada. Debe crear la tabla base primero.'
-                }
+                return {'success': False, 'message': 'Tabla no encontrada.'}
 
-            # Construir mapa base->fecha desde la tabla (lógica del script original)
-            self.progress_callback(30, "Construyendo orden cronológico...")
+            # Orden cronológico
             fecha_base_map = {}
             for feature in tabla.getFeatures():
                 foto = feature["Foto"]
                 fecha_str = feature["Fecha"]
                 if foto and fecha_str:
-                    base_name = os.path.splitext(foto)[0].lstrip("F")  # normaliza 'Fxxxx.jpg' a 'xxxx'
+                    base_name = os.path.splitext(foto)[0].lstrip("F")
                     fecha = self.parsear_fecha(fecha_str)
                     if fecha:
                         fecha_base_map[base_name] = fecha
-                    else:
-                        self.log_callback(f"⚠️ Fecha inválida para {base_name}: {fecha_str}. Se omitirá en el ordenamiento.")
 
-            sorted_bases = sorted(
-                fecha_base_map.keys(),
-                key=lambda x: fecha_base_map.get(x, datetime.min),
-                reverse=False
-            )
-            self.log_callback(f"📅 Orden cronológico de procesamiento: {sorted_bases}")
+            sorted_bases = sorted(fecha_base_map.keys(), key=lambda x: fecha_base_map.get(x, datetime.min))
 
             if not sorted_bases:
-                return {
-                    'success': False,
-                    'message': 'No se encontraron registros válidos en la tabla para procesar.'
-                }
+                return {'success': False, 'message': 'No se encontraron registros válidos.'}
 
-            # Procesar cada base en orden cronológico
+            # PROCESAR CON VALIDACIÓN CORREGIDA
             total_bases = len(sorted_bases)
             bases_procesadas = 0
+            validaciones_exitosas = 0
 
             for base in sorted_bases:
                 bases_procesadas += 1
                 progreso = 30 + int((bases_procesadas / total_bases) * 60)
-                self.progress_callback(progreso, f"Procesando {base}...")
+                self.progress_callback(progreso, f"Procesando {base} con validación corregida...")
+
+                nombre_layer = self.nombre_sin_prefijo(base)
+                if nombre_layer not in poligonos_layers or nombre_layer not in triangulaciones_layers:
+                    continue
+                    
+                poligono_layer = poligonos_layers[nombre_layer]
+                tin_nuevo = triangulaciones_layers[nombre_layer]
+
+                datos_nombre = self.parsear_nombre_archivo(nombre_layer)
+                muro_code = datos_nombre["Muro_Code"]
+                dem_name = dem_map.get(muro_code)
+                if not dem_name or not self.initialize_dem_work(dem_name):
+                    continue
+
+                tin_base = self._get_layer_by_name(dem_name)
+                if not tin_base:
+                    continue
+
+                self.log_callback(f"🔄 Procesando {base}")
+
+                # 1) Calcular volúmenes/espesores
+                self.calcular_volumenes(poligono_layer, tin_nuevo, tin_base, tabla, nombre_layer)
+
+                # 2) PEGADO CON VALIDACIÓN CORREGIDA
+                validacion_exitosa = validator.validate_tin_patch_corrected(
+                    tin_nuevo, dem_name, nombre_layer, poligono_layer
+                )
+                
+                if validacion_exitosa:
+                    validaciones_exitosas += 1
+                    self.log_callback(f"✅ {base}: Pegado validado correctamente")
+                else:
+                    self.log_callback(f"❌ {base}: ALERTA - Pegado falló")
+
+            # Reporte final
+            self.progress_callback(95, "Generando reporte corregido...")
+            reporte = validator.generate_validation_report_corrected()
+            
+            self.progress_callback(100, "¡Proceso con validación corregida completado!")
+            
+            return {
+                'success': True,
+                'message': f'Proceso completado con validación corregida. {validaciones_exitosas}/{bases_procesadas} pegados exitosos.',
+                'registros_procesados': bases_procesadas,
+                'validaciones_exitosas': validaciones_exitosas,
+                'reporte_validacion': reporte
+            }
+
+        except Exception as e:
+            import traceback
+            error_msg = f"Error durante el cálculo con validación corregida: {str(e)}"
+            self.log_callback(f"❌ {error_msg}")
+            return {'success': False, 'message': error_msg}
+
+            # ========================================
+            # PROCESAR CON VALIDACIÓN INTEGRADA
+            # ========================================
+            total_bases = len(sorted_bases)
+            bases_procesadas = 0
+            validaciones_exitosas = 0
+
+            for base in sorted_bases:
+                bases_procesadas += 1
+                progreso = 30 + int((bases_procesadas / total_bases) * 60)
+                self.progress_callback(progreso, f"Procesando {base} con validación...")
 
                 nombre_layer = self.nombre_sin_prefijo(base)
                 if nombre_layer not in poligonos_layers:
                     self.log_callback(f"⚠️ No hay capa de polígonos para {base}")
                     continue
                 poligono_layer = poligonos_layers[nombre_layer]
+                
                 if nombre_layer not in triangulaciones_layers:
                     self.log_callback(f"⚠️ No hay capa de triangulación para {base}")
                     continue
@@ -577,52 +619,660 @@ class VolumeCalculationProcessor:
                 muro_code = datos_nombre["Muro_Code"]
                 dem_name = dem_map.get(muro_code)
                 if not dem_name:
-                    self.log_callback(f"⚠️ Muro code desconocido en {base}: '{muro_code}'")
+                    self.log_callback(f"⚠️ Muro code desconocido: '{muro_code}'")
                     continue
 
-                # Asegurar DEM de trabajo para este muro
+                # Asegurar DEM de trabajo
                 if not self.initialize_dem_work(dem_name):
                     self.log_callback(f"❌ No se pudo preparar DEM de trabajo para {dem_name}")
                     continue
 
-                # Buscar DEM actual (ya debe apuntar al temporal)
                 tin_base = self._get_layer_by_name(dem_name)
                 if not tin_base:
-                    self.log_callback(f"⚠️ No se encontró DEM para el muro {muro_code} ({base})")
+                    self.log_callback(f"⚠️ No se encontró DEM para {muro_code}")
                     continue
 
                 fecha_str = fecha_base_map.get(base)
                 self.log_callback(f"🔄 Procesando {base} (Fecha: {fecha_str.strftime('%d-%m-%Y') if fecha_str else 'N/A'})")
 
-                # 1) Calcular volúmenes/espesores contra el DEM_MURO actualizado
+                # 1) Calcular volúmenes/espesores
                 self.calcular_volumenes(poligono_layer, tin_nuevo, tin_base, tabla, nombre_layer)
 
-                # 2) Pegar el TIN de esta fila sobre el DEM_MURO correspondiente
-                pegado_ok = self.overlay_patch_onto_dem(tin_nuevo, dem_name)
-                if not pegado_ok:
-                    self.log_callback(f"⚠️ No se pudo pegar el TIN '{tin_nuevo.name()}' sobre {dem_name} para {base}")
+                # 2) PEGADO CON VALIDACIÓN LIGERA
+                validacion_exitosa = validator.validate_tin_patch_memory_only(
+                    tin_nuevo, dem_name, nombre_layer, poligono_layer
+                )
+                
+                if validacion_exitosa:
+                    validaciones_exitosas += 1
+                    self.log_callback(f"✅ {base}: Pegado validado correctamente")
+                else:
+                    self.log_callback(f"❌ {base}: ALERTA - Pegado falló")
 
-                self.log_callback(f"✔️ Fila completada para {base} (DEM actualizado: {dem_name})")
+                self.log_callback(f"✔️ Fila completada: {base}")
 
-            self.progress_callback(100, "¡Cálculo de volúmenes completado!")
-            self.log_callback("✔️ Procesamiento de volúmenes, espesores y pegados incrementales completado para todas las capas.")
+            # Generar reporte final
+            self.progress_callback(95, "Generando reporte de validación...")
+            reporte = validator.generate_validation_report()
+            
+            self.progress_callback(100, "¡Cálculo con validación completado!")
 
             return {
                 'success': True,
-                'message': f'Cálculo de volúmenes completado exitosamente. {bases_procesadas} registros procesados.',
+                'message': f'Proceso completado. {bases_procesadas} bases procesadas, {validaciones_exitosas}/{bases_procesadas} validaciones exitosas.',
                 'registros_procesados': bases_procesadas,
-                'dem_actualizados': list(set(self.parsear_nombre_archivo(self.nombre_sin_prefijo(base))["Muro_Code"] 
-                                            for base in sorted_bases if self.parsear_nombre_archivo(self.nombre_sin_prefijo(base))["Muro_Code"]))
+                'validaciones_exitosas': validaciones_exitosas,
+                'reporte_validacion': reporte
             }
 
         except Exception as e:
             import traceback
-            error_msg = f"Error durante el cálculo de volúmenes: {str(e)}"
+            error_msg = f"Error durante el cálculo con validación: {str(e)}"
             error_details = traceback.format_exc()
             self.log_callback(f"❌ {error_msg}")
-            self.log_callback(f"📋 Detalles del error:\n{error_details}")
+            self.log_callback(f"🔋 Detalles del error:\n{error_details}")
             return {
                 'success': False,
                 'message': error_msg,
                 'details': error_details
             }
+
+
+class CorrectedTinValidation:
+    """Validación corregida que compara estados del DEM antes/después del pegado"""
+    
+    def __init__(self, processor):
+        self.processor = processor
+        self.validation_log = []
+        
+    def validate_tin_patch_corrected(self, tin_layer, dem_layer_name, base_name, poligono_layer=None):
+        """
+        VALIDACIÓN CORREGIDA:
+        1. Guarda estado del DEM ANTES del pegado
+        2. Ejecuta pegado
+        3. Compara DEM ANTES vs DEM DESPUÉS
+        4. Si son diferentes → pegado exitoso
+        """
+        
+        self.processor.log_callback(f"\n🔍 VALIDACIÓN CORREGIDA: {base_name} sobre {dem_layer_name}")
+        
+        try:
+            # Obtener DEM actual
+            dem = self.processor._get_layer_by_name(dem_layer_name)
+            if not dem:
+                return self._log_validation(base_name, dem_layer_name, False, "DEM no encontrado")
+            
+            # 1. GUARDAR ESTADO DEL DEM ANTES DEL PEGADO
+            dem_antes = self._read_dem_data_in_memory(dem)
+            if dem_antes is None:
+                return self._log_validation(base_name, dem_layer_name, False, "No se pudo leer DEM inicial")
+            
+            self.processor.log_callback(f"📸 Estado ANTES - Media: {dem_antes['mean']:.3f}, Std: {dem_antes['std']:.3f}")
+            
+            # 2. CALCULAR DIFERENCIAS PARA REFERENCIA (TIN vs DEM antes del pegado)
+            diff_esperadas = self._calculate_differences_in_memory(tin_layer, dem, poligono_layer)
+            if diff_esperadas:
+                self.processor.log_callback(f"📊 Diferencias esperadas:")
+                self.processor.log_callback(f"   - Relleno: {diff_esperadas['relleno']:.3f} m³")
+                self.processor.log_callback(f"   - Corte: {diff_esperadas['corte']:.3f} m³")
+                self.processor.log_callback(f"   - Píxeles diferentes: {diff_esperadas['pixeles_diferentes']}")
+            
+            # 3. EJECUTAR EL PEGADO
+            self.processor.log_callback("🔄 Ejecutando pegado...")
+            pegado_ok = self.processor.overlay_patch_onto_dem(tin_layer, dem_layer_name)
+            
+            if not pegado_ok:
+                return self._log_validation(base_name, dem_layer_name, False, "overlay_patch_onto_dem retornó False")
+            
+            # 4. LEER ESTADO DEL DEM DESPUÉS DEL PEGADO
+            # IMPORTANTE: Refrescar la referencia del DEM después del pegado
+            dem_post = self.processor._get_layer_by_name(dem_layer_name)
+            if not dem_post:
+                return self._log_validation(base_name, dem_layer_name, False, "DEM no encontrado después del pegado")
+                
+            dem_despues = self._read_dem_data_in_memory(dem_post)
+            if dem_despues is None:
+                return self._log_validation(base_name, dem_layer_name, False, "No se pudo leer DEM después del pegado")
+            
+            self.processor.log_callback(f"📸 Estado DESPUÉS - Media: {dem_despues['mean']:.3f}, Std: {dem_despues['std']:.3f}")
+            
+            # 5. COMPARAR ESTADOS DEL DEM (ANTES vs DESPUÉS)
+            dem_comparison = self._compare_dem_states(dem_antes, dem_despues)
+            
+            self.processor.log_callback(f"📈 ANÁLISIS DE CAMBIOS EN EL DEM:")
+            self.processor.log_callback(f"   - Hash cambió: {dem_comparison['hash_changed']}")
+            self.processor.log_callback(f"   - Píxeles modificados: {dem_comparison['pixels_changed']}")
+            self.processor.log_callback(f"   - % píxeles cambiados: {dem_comparison['percent_changed']:.4f}%")
+            self.processor.log_callback(f"   - Diferencia máxima: {dem_comparison['max_change']:.6f}")
+            self.processor.log_callback(f"   - Diferencia media: {dem_comparison['mean_abs_change']:.6f}")
+            
+            # 6. CRITERIOS DE VALIDACIÓN CORREGIDOS
+            # El pegado es exitoso si el DEM cambió significativamente
+            tolerancia_pixels = 100  # mínimo píxeles que deben cambiar
+            tolerancia_cambio = 0.001  # diferencia mínima promedio en metros
+            
+            pegado_exitoso = (
+                dem_comparison['hash_changed'] and  # El hash del DEM cambió
+                dem_comparison['pixels_changed'] >= tolerancia_pixels and  # Suficientes píxeles cambiaron
+                dem_comparison['mean_abs_change'] >= tolerancia_cambio  # Cambio promedio significativo
+            )
+            
+            if pegado_exitoso:
+                mensaje = f"✅ PEGADO EXITOSO: DEM modificado ({dem_comparison['pixels_changed']} píxeles, {dem_comparison['percent_changed']:.2f}%)"
+                self.processor.log_callback("✅ VALIDACIÓN EXITOSA")
+            else:
+                mensaje = f"❌ PEGADO FALLÓ: Sin cambios significativos en DEM (cambio: {dem_comparison['mean_abs_change']:.6f}m, píxeles: {dem_comparison['pixels_changed']})"
+                self.processor.log_callback("❌ VALIDACIÓN FALLIDA")
+            
+            # 7. LOG DETALLADO
+            return self._log_validation(
+                base_name, dem_layer_name, pegado_exitoso, mensaje,
+                extra_data={
+                    'diferencias_esperadas': diff_esperadas,
+                    'dem_antes': dem_antes,
+                    'dem_despues': dem_despues,
+                    'dem_comparison': dem_comparison
+                }
+            )
+            
+        except Exception as e:
+            self.processor.log_callback(f"❌ Error durante validación corregida: {e}")
+            return self._log_validation(base_name, dem_layer_name, False, f"Error: {str(e)}")
+
+    def _read_dem_data_in_memory(self, dem_layer):
+        """Lee todos los datos de un DEM en memoria para comparación"""
+        try:
+            ds = gdal.Open(dem_layer.source(), gdal.GA_ReadOnly)
+            if ds is None:
+                return None
+            
+            band = ds.GetRasterBand(1)
+            data = band.ReadAsArray()
+            if data is None:
+                return None
+                
+            data = data.astype(np.float32)
+            nodata = band.GetNoDataValue()
+            
+            # Manejar NoData
+            if nodata is not None:
+                valid_data = data[data != nodata]
+            else:
+                valid_data = data[~np.isnan(data)]
+            
+            if len(valid_data) == 0:
+                return None
+            
+            # Estadísticas y hash para comparación
+            result = {
+                'mean': np.mean(valid_data),
+                'std': np.std(valid_data),
+                'min': np.min(valid_data),
+                'max': np.max(valid_data),
+                'valid_pixels': len(valid_data),
+                'total_pixels': data.size,
+                'data_hash': hash(data.tobytes()),  # Para detectar cambios exactos
+                'raw_data': data  # Para comparación píxel a píxel
+            }
+            
+            ds = None
+            return result
+            
+        except Exception as e:
+            self.processor.log_callback(f"❌ Error leyendo datos del DEM: {e}")
+            return None
+
+    def _compare_dem_states(self, dem_antes, dem_despues):
+        """Compara dos estados del DEM píxel por píxel"""
+        try:
+            data1 = dem_antes['raw_data']
+            data2 = dem_despues['raw_data']
+            
+            if data1.shape != data2.shape:
+                return {
+                    'hash_changed': True,
+                    'pixels_changed': -1,
+                    'percent_changed': -1,
+                    'max_change': -1,
+                    'mean_abs_change': -1,
+                    'error': 'Diferentes dimensiones'
+                }
+            
+            # Comparación píxel por píxel
+            diff = data2 - data1
+            abs_diff = np.abs(diff)
+            
+            # Contar píxeles que cambiaron (con tolerancia mínima)
+            tolerancia_pixel = 1e-6
+            changed_mask = abs_diff > tolerancia_pixel
+            pixels_changed = np.sum(changed_mask)
+            percent_changed = (pixels_changed / data1.size) * 100
+            
+            # Estadísticas de cambios
+            if pixels_changed > 0:
+                max_change = np.max(abs_diff)
+                mean_abs_change = np.mean(abs_diff[changed_mask])
+            else:
+                max_change = 0.0
+                mean_abs_change = 0.0
+            
+            return {
+                'hash_changed': dem_antes['data_hash'] != dem_despues['data_hash'],
+                'pixels_changed': int(pixels_changed),
+                'percent_changed': float(percent_changed),
+                'max_change': float(max_change),
+                'mean_abs_change': float(mean_abs_change),
+                'total_pixels': int(data1.size)
+            }
+            
+        except Exception as e:
+            self.processor.log_callback(f"❌ Error comparando estados del DEM: {e}")
+            return {
+                'hash_changed': False,
+                'pixels_changed': 0,
+                'percent_changed': 0,
+                'max_change': 0,
+                'mean_abs_change': 0,
+                'error': str(e)
+            }
+
+    def _calculate_differences_in_memory(self, tin_layer, dem_layer, poligono_layer=None):
+        """Calcula diferencias TIN-DEM (para referencia solamente)"""
+        try:
+            project_crs = QgsProject.instance().crs()
+            
+            if not tin_layer.crs().isValid():
+                tin_layer.setCrs(project_crs)
+            if not dem_layer.crs().isValid():
+                dem_layer.setCrs(project_crs)
+                
+            tin_extent = tin_layer.extent()
+            
+            output_diff = processing.run("qgis:rastercalculator", {
+                'EXPRESSION': f'"{tin_layer.name()}@1" - "{dem_layer.name()}@1"',
+                'LAYERS': [tin_layer, dem_layer],
+                'CRS': project_crs.authid(),
+                'EXTENT': tin_extent,
+                'OUTPUT': 'TEMPORARY_OUTPUT'
+            })['OUTPUT']
+
+            if poligono_layer and poligono_layer.featureCount() > 0:
+                output_clip = processing.run("gdal:cliprasterbymasklayer", {
+                    'INPUT': output_diff,
+                    'MASK': poligono_layer,
+                    'CROP_TO_CUTLINE': True,
+                    'KEEP_RESOLUTION': True,
+                    'OUTPUT': 'TEMPORARY_OUTPUT'
+                })['OUTPUT']
+            else:
+                output_clip = output_diff
+
+            ds = gdal.Open(output_clip)
+            if ds is None:
+                return None
+
+            band = ds.GetRasterBand(1)
+            arr = band.ReadAsArray()
+            if arr is None:
+                return None
+
+            arr = arr.astype(float)
+            gt = ds.GetGeoTransform()
+            pixel_area = abs(gt[1] * gt[5])
+
+            nodata = band.GetNoDataValue()
+            if nodata is not None:
+                arr = np.ma.masked_equal(arr, nodata)
+            else:
+                arr = np.ma.masked_invalid(arr)
+
+            ds = None
+
+            if arr.mask.all():
+                return {
+                    'relleno': 0.0,
+                    'corte': 0.0,
+                    'diff_promedio': 0.0,
+                    'pixeles_diferentes': 0
+                }
+            
+            relleno = arr[arr > 0].sum() * pixel_area if np.any(arr > 0) else 0.0
+            corte = -arr[arr < 0].sum() * pixel_area if np.any(arr < 0) else 0.0
+            diff_promedio = np.mean(arr[~arr.mask])
+            pixeles_diferentes = np.count_nonzero(~arr.mask)
+            
+            return {
+                'relleno': float(relleno),
+                'corte': float(corte),
+                'diff_promedio': float(diff_promedio),
+                'pixeles_diferentes': int(pixeles_diferentes)
+            }
+            
+        except Exception as e:
+            return None
+
+    def _log_validation(self, base_name, dem_layer_name, success, message, extra_data=None):
+        """Registra el resultado de la validación"""
+        
+        log_entry = {
+            'timestamp': datetime.now(),
+            'base_name': base_name,
+            'dem_layer': dem_layer_name,
+            'success': success,
+            'message': message
+        }
+        
+        if extra_data:
+            log_entry.update(extra_data)
+            
+        self.validation_log.append(log_entry)
+        return success
+
+    def generate_validation_report_corrected(self):
+        """Genera reporte con la lógica corregida"""
+        
+        if not self.validation_log:
+            return "No hay datos de validación disponibles."
+            
+        lines = []
+        lines.append("="*80)
+        lines.append("REPORTE DE VALIDACIÓN DE PEGADO DE TINS (CORREGIDO)")
+        lines.append("="*80)
+        lines.append(f"Generado: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        lines.append("")
+        
+        # Resumen
+        total = len(self.validation_log)
+        exitosos = sum(1 for log in self.validation_log if log['success'])
+        fallidos = total - exitosos
+        
+        lines.append("RESUMEN EJECUTIVO:")
+        lines.append(f"• Total validaciones: {total}")
+        lines.append(f"• Pegados exitosos: {exitosos} ({exitosos/total*100:.1f}%)")
+        lines.append(f"• Pegados fallidos: {fallidos} ({fallidos/total*100:.1f}%)")
+        lines.append("")
+        
+        if exitosos == total:
+            lines.append("✅ EXCELENTE: Todos los pegados fueron exitosos")
+        elif fallidos > 0:
+            lines.append("⚠️  ATENCIÓN: Se detectaron algunos pegados fallidos")
+        lines.append("")
+        
+        # Detalle por validación
+        lines.append("DETALLE POR ITERACIÓN:")
+        lines.append("-"*80)
+        
+        for i, log in enumerate(self.validation_log, 1):
+            lines.append(f"\n{i}. {log['base_name']} -> {log['dem_layer']}")
+            lines.append(f"   Resultado: {'✅ ÉXITO' if log['success'] else '❌ FALLA'}")
+            lines.append(f"   {log['message']}")
+            
+            if 'dem_comparison' in log:
+                comp = log['dem_comparison']
+                lines.append(f"   - Píxeles modificados: {comp.get('pixels_changed', 0)}")
+                lines.append(f"   - % área cambiada: {comp.get('percent_changed', 0):.4f}%")
+                lines.append(f"   - Diferencia máxima: {comp.get('max_change', 0):.6f} m")
+                lines.append(f"   - Diferencia media: {comp.get('mean_abs_change', 0):.6f} m")
+            
+            lines.append("   " + "-"*40)
+        
+        report = "\n".join(lines)
+        self.processor.log_callback(f"\n{report}")
+        return report
+        
+class LightweightTinValidation:
+    """Validación ligera que solo usa arrays en memoria - VERSIÓN INTEGRADA"""
+    
+    def __init__(self, processor):
+        self.processor = processor
+        self.validation_log = []
+        
+    def validate_tin_patch_memory_only(self, tin_layer, dem_layer_name, base_name, poligono_layer=None):
+        """Validación completa del pegado usando solo memoria"""
+        
+        self.processor.log_callback(f"\n🔍 VALIDANDO PEGADO: {base_name} sobre {dem_layer_name}")
+        
+        try:
+            # Obtener DEM actual
+            dem = self.processor._get_layer_by_name(dem_layer_name)
+            if not dem:
+                return self._log_validation(base_name, dem_layer_name, False, "DEM no encontrado")
+            
+            # 1. CALCULAR DIFERENCIAS ANTES DEL PEGADO
+            diff_antes = self._calculate_differences_in_memory(tin_layer, dem, poligono_layer)
+            if diff_antes is None:
+                return self._log_validation(base_name, dem_layer_name, False, "No se pudieron calcular diferencias iniciales")
+            
+            self.processor.log_callback(f"📊 ANTES del pegado:")
+            self.processor.log_callback(f"   - Relleno: {diff_antes['relleno']:.3f} m³")
+            self.processor.log_callback(f"   - Corte: {diff_antes['corte']:.3f} m³")
+            self.processor.log_callback(f"   - Píxeles con diferencia: {diff_antes['pixeles_diferentes']}")
+            
+            # 2. EJECUTAR EL PEGADO
+            self.processor.log_callback("🔄 Ejecutando pegado...")
+            pegado_ok = self.processor.overlay_patch_onto_dem(tin_layer, dem_layer_name)
+            
+            if not pegado_ok:
+                return self._log_validation(base_name, dem_layer_name, False, "overlay_patch_onto_dem retornó False")
+            
+            # 3. CALCULAR DIFERENCIAS DESPUÉS DEL PEGADO  
+            dem_post = self.processor._get_layer_by_name(dem_layer_name)
+            if not dem_post:
+                return self._log_validation(base_name, dem_layer_name, False, "DEM no encontrado después del pegado")
+                
+            diff_despues = self._calculate_differences_in_memory(tin_layer, dem_post, poligono_layer)
+            if diff_despues is None:
+                return self._log_validation(base_name, dem_layer_name, False, "No se pudieron calcular diferencias post-pegado")
+            
+            self.processor.log_callback(f"📊 DESPUÉS del pegado:")
+            self.processor.log_callback(f"   - Relleno: {diff_despues['relleno']:.3f} m³")
+            self.processor.log_callback(f"   - Corte: {diff_despues['corte']:.3f} m³")
+            self.processor.log_callback(f"   - Píxeles con diferencia: {diff_despues['pixeles_diferentes']}")
+            
+            # 4. VALIDAR QUE LAS DIFERENCIAS POST-PEGADO SEAN ~0
+            tolerancia_volumen = 0.1  # m³
+            tolerancia_diferencia = 0.001  # metros
+            
+            volumen_residual_relleno = abs(diff_despues['relleno'])
+            volumen_residual_corte = abs(diff_despues['corte'])
+            diferencia_promedio_residual = abs(diff_despues['diff_promedio'])
+            
+            pegado_exitoso = (
+                volumen_residual_relleno <= tolerancia_volumen and
+                volumen_residual_corte <= tolerancia_volumen and
+                diferencia_promedio_residual <= tolerancia_diferencia
+            )
+            
+            # 5. ANÁLISIS DE REDUCCIÓN
+            reduccion_relleno = 0
+            reduccion_corte = 0
+            if diff_antes['relleno'] > 0:
+                reduccion_relleno = ((diff_antes['relleno'] - diff_despues['relleno']) / diff_antes['relleno']) * 100
+            if abs(diff_antes['corte']) > 0:
+                reduccion_corte = ((abs(diff_antes['corte']) - abs(diff_despues['corte'])) / abs(diff_antes['corte'])) * 100
+            
+            self.processor.log_callback(f"📈 ANÁLISIS:")
+            self.processor.log_callback(f"   - Reducción relleno: {reduccion_relleno:.1f}%")
+            self.processor.log_callback(f"   - Reducción corte: {reduccion_corte:.1f}%")
+            self.processor.log_callback(f"   - Residuo relleno: {volumen_residual_relleno:.6f} m³")
+            self.processor.log_callback(f"   - Residuo corte: {volumen_residual_corte:.6f} m³")
+            
+            if pegado_exitoso:
+                mensaje = "✅ PEGADO EXITOSO: Diferencias reducidas a ~0"
+                self.processor.log_callback("✅ VALIDACIÓN EXITOSA")
+            else:
+                mensaje = f"❌ PEGADO FALLÓ: Residuos significativos (R:{volumen_residual_relleno:.3f}, C:{volumen_residual_corte:.3f})"
+                self.processor.log_callback("❌ VALIDACIÓN FALLIDA")
+            
+            # 6. LOG DETALLADO
+            return self._log_validation(
+                base_name, dem_layer_name, pegado_exitoso, mensaje,
+                extra_data={
+                    'antes': diff_antes,
+                    'despues': diff_despues,
+                    'reduccion_relleno_pct': reduccion_relleno,
+                    'reduccion_corte_pct': reduccion_corte,
+                    'volumen_residual_relleno': volumen_residual_relleno,
+                    'volumen_residual_corte': volumen_residual_corte
+                }
+            )
+            
+        except Exception as e:
+            self.processor.log_callback(f"❌ Error durante validación: {e}")
+            return self._log_validation(base_name, dem_layer_name, False, f"Error: {str(e)}")
+
+    def _calculate_differences_in_memory(self, tin_layer, dem_layer, poligono_layer=None):
+        """Calcula diferencias TIN-DEM completamente en memoria"""
+        try:
+            project_crs = QgsProject.instance().crs()
+            
+            # Asegurar CRS
+            if not tin_layer.crs().isValid():
+                tin_layer.setCrs(project_crs)
+            if not dem_layer.crs().isValid():
+                dem_layer.setCrs(project_crs)
+                
+            tin_extent = tin_layer.extent()
+            
+            # Cálculo de diferencias
+            output_diff = processing.run("qgis:rastercalculator", {
+                'EXPRESSION': f'"{tin_layer.name()}@1" - "{dem_layer.name()}@1"',
+                'LAYERS': [tin_layer, dem_layer],
+                'CRS': project_crs.authid(),
+                'EXTENT': tin_extent,
+                'OUTPUT': 'TEMPORARY_OUTPUT'
+            })['OUTPUT']
+
+            # Recortar por polígono si existe
+            if poligono_layer and poligono_layer.featureCount() > 0:
+                output_clip = processing.run("gdal:cliprasterbymasklayer", {
+                    'INPUT': output_diff,
+                    'MASK': poligono_layer,
+                    'CROP_TO_CUTLINE': True,
+                    'KEEP_RESOLUTION': True,
+                    'OUTPUT': 'TEMPORARY_OUTPUT'
+                })['OUTPUT']
+            else:
+                output_clip = output_diff
+
+            # Leer datos en memoria
+            ds = gdal.Open(output_clip)
+            if ds is None:
+                return None
+
+            band = ds.GetRasterBand(1)
+            arr = band.ReadAsArray()
+            if arr is None:
+                return None
+
+            arr = arr.astype(float)
+            gt = ds.GetGeoTransform()
+            pixel_area = abs(gt[1] * gt[5])
+
+            # Procesar NoData
+            nodata = band.GetNoDataValue()
+            if nodata is not None:
+                arr = np.ma.masked_equal(arr, nodata)
+            else:
+                arr = np.ma.masked_invalid(arr)
+
+            ds = None  # Cerrar dataset temporal
+
+            # Calcular estadísticas
+            if arr.mask.all():
+                return {
+                    'relleno': 0.0,
+                    'corte': 0.0,
+                    'diff_promedio': 0.0,
+                    'pixeles_diferentes': 0,
+                    'pixeles_totales': 0
+                }
+            
+            relleno = arr[arr > 0].sum() * pixel_area if np.any(arr > 0) else 0.0
+            corte = -arr[arr < 0].sum() * pixel_area if np.any(arr < 0) else 0.0
+            diff_promedio = np.mean(arr[~arr.mask])
+            pixeles_diferentes = np.count_nonzero(~arr.mask)
+            
+            return {
+                'relleno': float(relleno),
+                'corte': float(corte),
+                'diff_promedio': float(diff_promedio),
+                'pixeles_diferentes': int(pixeles_diferentes),
+                'pixeles_totales': int(arr.size)
+            }
+            
+        except Exception as e:
+            self.processor.log_callback(f"❌ Error calculando diferencias: {e}")
+            return None
+
+    def _log_validation(self, base_name, dem_layer_name, success, message, extra_data=None):
+        """Registra el resultado de la validación"""
+        
+        log_entry = {
+            'timestamp': datetime.now(),
+            'base_name': base_name,
+            'dem_layer': dem_layer_name,
+            'success': success,
+            'message': message
+        }
+        
+        if extra_data:
+            log_entry.update(extra_data)
+            
+        self.validation_log.append(log_entry)
+        return success
+
+    def generate_validation_report(self):
+        """Genera reporte de validación como string"""
+        
+        if not self.validation_log:
+            return "No hay datos de validación disponibles."
+            
+        lines = []
+        lines.append("="*80)
+        lines.append("REPORTE DE VALIDACIÓN DE PEGADO DE TINS")
+        lines.append("="*80)
+        lines.append(f"Generado: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        lines.append("")
+        
+        # Resumen
+        total = len(self.validation_log)
+        exitosos = sum(1 for log in self.validation_log if log['success'])
+        fallidos = total - exitosos
+        
+        lines.append("RESUMEN EJECUTIVO:")
+        lines.append(f"• Total validaciones: {total}")
+        lines.append(f"• Pegados exitosos: {exitosos} ({exitosos/total*100:.1f}%)")
+        lines.append(f"• Pegados fallidos: {fallidos} ({fallidos/total*100:.1f}%)")
+        lines.append("")
+        
+        if fallidos > 0:
+            lines.append("⚠️  ATENCIÓN: Se detectaron pegados fallidos")
+            lines.append("")
+        
+        # Detalle
+        lines.append("DETALLE POR ITERACIÓN:")
+        lines.append("-"*80)
+        
+        for i, log in enumerate(self.validation_log, 1):
+            lines.append(f"\n{i}. {log['base_name']} -> {log['dem_layer']}")
+            lines.append(f"   Resultado: {'✅ ÉXITO' if log['success'] else '❌ FALLA'}")
+            
+            if 'antes' in log and 'despues' in log:
+                antes = log['antes']
+                despues = log['despues']
+                
+                lines.append(f"   ANTES  - Relleno: {antes['relleno']:>8.2f} m³, Corte: {antes['corte']:>8.2f} m³")
+                lines.append(f"   DESPUÉS- Relleno: {despues['relleno']:>8.2f} m³, Corte: {despues['corte']:>8.2f} m³")
+                
+                if 'reduccion_relleno_pct' in log:
+                    lines.append(f"   REDUCCIÓN - Relleno: {log['reduccion_relleno_pct']:>6.1f}%, Corte: {log['reduccion_corte_pct']:>6.1f}%")
+            
+            lines.append("   " + "-"*40)
+        
+        report = "\n".join(lines)
+        
+        # Imprimir en log
+        self.processor.log_callback(f"\n{report}")
+        
+        return report
