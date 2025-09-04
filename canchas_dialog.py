@@ -368,11 +368,10 @@ class CanchasDialog(QDialog):
             }
         """)
         
-        # Crear las 4 sub-pestañas
+        # Crear las 3 sub-pestañas (eliminando pantallazos separados)
         self.create_table_subtab()        # 3.1
-        self.create_volumes_subtab()      # 3.2  
-        self.create_screenshots_subtab()  # 3.3
-        self.create_xml_subtab()          # 3.4
+        self.create_volumes_subtab()      # 3.2 (UNIFICADO con pantallazos)  
+        self.create_xml_subtab()          # 3.3 (renumerado)
         
         layout.addWidget(self.analysis_tab_widget)
         
@@ -460,27 +459,27 @@ class CanchasDialog(QDialog):
         self.analysis_tab_widget.addTab(tab, "3.1 Tabla")
 
     def create_volumes_subtab(self):
-        """Sub-pestaña 3.2: Volúmenes"""
+        """Sub-pestaña 3.2: Volúmenes y Pantallazos (UNIFICADO)"""
         tab = QtWidgets.QWidget()
         layout = QVBoxLayout()
         
         # Header con icono y título
         header_layout = QHBoxLayout()
-        icon_label = QLabel("📐")
+        icon_label = QLabel("�📸")
         icon_label.setStyleSheet("font-size: 20px; margin-right: 8px;")
-        title_label = QLabel("CÁLCULO DE VOLÚMENES")
+        title_label = QLabel("VOLÚMENES Y PANTALLAZOS")
         title_label.setStyleSheet("font-weight: bold; font-size: 14px; color: #F18F01;")
         header_layout.addWidget(icon_label)
         header_layout.addWidget(title_label)
         header_layout.addStretch()
         layout.addLayout(header_layout)
         
-        desc = QLabel("Calcula cut/fill, espesores mínimo/máximo y actualiza DEM incrementalmente")
+        desc = QLabel("Proceso incremental: cut/fill + pantallazos de diferencias DEM + pegado automático")
         desc.setStyleSheet("color: gray; margin-bottom: 10px;")
         layout.addWidget(desc)
         
-        # Configuración de volúmenes
-        config_group = QtWidgets.QGroupBox("⚙️ Parámetros de Cálculo")
+        # Configuración de volúmenes y pantallazos
+        config_group = QtWidgets.QGroupBox("⚙️ Parámetros de Cálculo Volumétrico")
         config_layout = QVBoxLayout()
         
         # Número de puntos aleatorios
@@ -520,16 +519,70 @@ class CanchasDialog(QDialog):
         config_group.setLayout(config_layout)
         layout.addWidget(config_group)
         
-        # Proceso incremental
-        process_group = QtWidgets.QGroupBox("🔄 Proceso Incremental")
+        # Configuración de pantallazos
+        screenshot_group = QtWidgets.QGroupBox("📸 Parámetros de Pantallazos")
+        screenshot_layout = QVBoxLayout()
+        
+        # Dimensiones
+        dimensions_layout = QHBoxLayout()
+        dimensions_layout.addWidget(QLabel("Dimensiones:"))
+        
+        self.screenshot_width = QtWidgets.QSpinBox()
+        self.screenshot_width.setMinimum(400)
+        self.screenshot_width.setMaximum(2000)
+        self.screenshot_width.setValue(800)
+        self.screenshot_width.setSuffix(" px")
+        dimensions_layout.addWidget(self.screenshot_width)
+        
+        dimensions_layout.addWidget(QLabel("×"))
+        
+        self.screenshot_height = QtWidgets.QSpinBox()
+        self.screenshot_height.setMinimum(300)
+        self.screenshot_height.setMaximum(1500)
+        self.screenshot_height.setValue(500)
+        self.screenshot_height.setSuffix(" px")
+        dimensions_layout.addWidget(self.screenshot_height)
+        
+        dimensions_layout.addStretch()
+        screenshot_layout.addLayout(dimensions_layout)
+        
+        # Factor de expansión
+        expansion_layout = QHBoxLayout()
+        expansion_layout.addWidget(QLabel("Factor de expansión:"))
+        self.expansion_factor = QtWidgets.QDoubleSpinBox()
+        self.expansion_factor.setMinimum(1.0)
+        self.expansion_factor.setMaximum(3.0)
+        self.expansion_factor.setValue(1.3)
+        self.expansion_factor.setSingleStep(0.1)
+        self.expansion_factor.setToolTip("Margen alrededor del área (1.0 = sin margen)")
+        expansion_layout.addWidget(self.expansion_factor)
+        expansion_layout.addStretch()
+        screenshot_layout.addLayout(expansion_layout)
+        
+        # Capa de fondo
+        background_layout = QHBoxLayout()
+        background_layout.addWidget(QLabel("Capa de fondo:"))
+        self.background_layer = QLineEdit("tif")
+        self.background_layer.setToolTip("Nombre de la capa que se usará como fondo")
+        background_layout.addWidget(self.background_layer)
+        background_layout.addStretch()
+        screenshot_layout.addLayout(background_layout)
+        
+        screenshot_group.setLayout(screenshot_layout)
+        layout.addWidget(screenshot_group)
+        
+        # Proceso incremental unificado
+        process_group = QtWidgets.QGroupBox("🔄 Proceso Incremental Unificado")
         process_layout = QVBoxLayout()
         
-        process_info = QLabel("""ORDEN CRONOLÓGICO: Procesa filas por fecha de tabla
-    CÁLCULO VOLUMEN: TIN_nuevo vs DEM_muro → Cut/Fill/Espesor
-    PEGADO INCREMENTAL: TIN_nuevo se pega sobre DEM_muro
-    ACTUALIZACIÓN: DEM_muro se actualiza para siguiente fila
+        process_info = QLabel("""NUEVO FLUJO UNIFICADO:
+    1. ORDEN CRONOLÓGICO: Procesa filas por fecha de tabla
+    2. CÁLCULO VOLUMEN: TIN_nuevo vs DEM_muro → Cut/Fill/Espesor
+    3. PANTALLAZOS DEM: Diferencia TIN vs DEM con colores cut/fill 
+    4. PEGADO INCREMENTAL: TIN_nuevo se pega sobre DEM_muro
+    5. ACTUALIZACIÓN: DEM_muro listo para siguiente iteración
 
-    Resultado: Cut, Fill, Espesor, Espesor mínimo, Espesor máximo""")
+    Resultado: Cut, Fill, Espesor + Pantallazos regulares + Pantallazos MovTierra""")
         process_info.setStyleSheet("font-family: 'Courier New'; color: #555; background-color: #fff8e7; padding: 10px; border: 1px solid #F18F01; border-radius: 3px;")
         process_layout.addWidget(process_info)
         
@@ -538,16 +591,17 @@ class CanchasDialog(QDialog):
         
         layout.addStretch()
         
-        # Botón ejecutar
-        self.btn_volumes = QPushButton("📊 Calcular Volúmenes y Espesores")
-        self.btn_volumes.setStyleSheet("""
+        # Botón ejecutar unificado
+        self.btn_volume_screenshot = QPushButton("📊📸 Ejecutar Volúmenes y Pantallazos")
+        self.btn_volume_screenshot.setStyleSheet("""
             QPushButton {
                 background-color: #F18F01; 
                 color: white; 
                 font-weight: bold; 
-                padding: 10px; 
+                padding: 12px; 
                 border: none; 
                 border-radius: 5px;
+                font-size: 14px;
             }
             QPushButton:hover {
                 background-color: #D17A01;
@@ -556,11 +610,11 @@ class CanchasDialog(QDialog):
                 background-color: #B16801;
             }
         """)
-        self.btn_volumes.clicked.connect(self.ejecutar_volumenes)
-        layout.addWidget(self.btn_volumes)
+        self.btn_volume_screenshot.clicked.connect(self.ejecutar_volumenes_pantallazos)
+        layout.addWidget(self.btn_volume_screenshot)
         
         tab.setLayout(layout)
-        self.analysis_tab_widget.addTab(tab, "3.2 Volúmenes")
+        self.analysis_tab_widget.addTab(tab, "3.2 Vol+Screenshots")
 
     def create_screenshots_subtab(self):
         """Sub-pestaña 3.3: Pantallazos"""
@@ -675,7 +729,7 @@ class CanchasDialog(QDialog):
         self.analysis_tab_widget.addTab(tab, "3.3 Pantallazos")
 
     def create_xml_subtab(self):
-        """Sub-pestaña 3.4: Export XML"""
+        """Sub-pestaña 3.3: Export XML"""
         tab = QtWidgets.QWidget()
         layout = QVBoxLayout()
         
@@ -776,7 +830,7 @@ class CanchasDialog(QDialog):
         layout.addWidget(self.btn_xml)
         
         tab.setLayout(layout)
-        self.analysis_tab_widget.addTab(tab, "3.4 XML")
+        self.analysis_tab_widget.addTab(tab, "3.3 XML")
     
     def init_connections(self):
         """Conectar señales"""
@@ -1077,6 +1131,64 @@ class CanchasDialog(QDialog):
                 self.log_message("🎉 ¡Pantallazos generados exitosamente!")
                 self.log_message(f"📸 {resultado.get('pantallazos_exitosos', 0)}/{resultado.get('total_pantallazos', 0)} pantallazos exitosos")
                 self.log_message(f"📁 Guardados en: {resultado.get('carpeta_salida', 'N/A')}")
+                self.save_settings()
+            else:
+                self.log_message(f"❌ Error: {resultado['message']}")
+                if 'details' in resultado:
+                    self.log_message("📋 Ver detalles del error arriba")
+                
+        except Exception as e:
+            self.log_message(f"❌ Error inesperado: {e}")
+        finally:
+            self.progress_bar.setVisible(False)
+    
+    def ejecutar_volumenes_pantallazos(self):
+        """Ejecutar proceso unificado de volúmenes y pantallazos"""
+        # Verificar que PROC_ROOT esté configurado
+        if not self.proc_root.text().strip():
+            self.log_message("❌ Error: Debe configurar la carpeta de procesamiento")
+            return
+
+        # Mostrar progreso
+        self.progress_bar.setVisible(True)
+        self.progress_bar.setValue(0)
+        
+        self.log_message("📊📸 Iniciando proceso unificado de volúmenes y pantallazos...")
+        self.log_message(f"📁 PROC_ROOT: {self.proc_root.text()}")
+        self.log_message(f"🎯 Puntos aleatorios: {self.num_random_points.value()}")
+        self.log_message(f"📏 Espesor mínimo: {self.min_espesor.text()} metros")
+        self.log_message(f"🔄 Algoritmo remuestreo: {self.resample_algorithm.currentText()}")
+        self.log_message(f"📐 Dimensiones imágenes: {self.screenshot_width.value()}×{self.screenshot_height.value()} px")
+        self.log_message(f"🔍 Factor expansión: {self.expansion_factor.value()}")
+        self.log_message(f"🖼️ Capa fondo: {self.background_layer.text()}")
+        
+        try:
+            # Importar el procesador unificado
+            from .core.volume_screenshot import VolumeScreenshotProcessor
+            
+            # Crear procesador con parámetros de la GUI
+            processor = VolumeScreenshotProcessor(
+                proc_root=self.proc_root.text(),
+                num_random_points=self.num_random_points.value(),
+                min_espesor=float(self.min_espesor.text()),
+                resample_algorithm=self.resample_algorithm.currentText(),
+                screenshot_width=self.screenshot_width.value(),
+                screenshot_height=self.screenshot_height.value(),
+                expansion_factor=self.expansion_factor.value(),
+                background_layer=self.background_layer.text(),
+                progress_callback=self.update_progress,
+                log_callback=self.log_message
+            )
+            
+            # Ejecutar proceso unificado
+            resultado = processor.ejecutar_calculo_volumenes_con_pantallazos()
+            
+            if resultado['success']:
+                self.log_message("🎉 ¡Proceso unificado completado exitosamente!")
+                self.log_message(f"📊 {resultado.get('registros_procesados', 0)} registros procesados")
+                self.log_message(f"📸 {resultado.get('pantallazos_exitosos', 0)} pantallazos generados")
+                self.log_message(f"📁 Planos regulares: {resultado.get('carpeta_planos', 'N/A')}")
+                self.log_message(f"📁 Planos MovTierra: {resultado.get('carpeta_movtierra', 'N/A')}")
                 self.save_settings()
             else:
                 self.log_message(f"❌ Error: {resultado['message']}")

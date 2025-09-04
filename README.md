@@ -83,11 +83,11 @@ Verificación automática de la integridad espacial y formato de todos los archi
 ### **Paso 2: Procesamiento Visual** 🔄
 Generación de capas y grupos QGIS organizados cronológicamente, creación de TIN y polígonos con simbología profesional automática.
 
-### **Paso 3: Análisis de Datos** 📊
-Extracción de coordenadas extremas, metadata completa y análisis estadístico de elevaciones para cada levantamiento.
+### **Paso 3: Análisis de Datos y Volúmenes** 📊
+Extracción de coordenadas extremas, metadata completa, análisis volumétrico incremental con cálculos Cut/Fill y generación automática de pantallazos de diferencias DEM.
 
-### **Paso 4: Cálculo de Volúmenes** 📏
-Análisis volumétrico incremental comparando con DEM base, cálculo de Cut/Fill y determinación de espesores.
+### **Paso 4: Cálculo de Volúmenes Unificado** 📏📸
+Análisis volumétrico incremental comparando con DEM base, cálculo de Cut/Fill, determinación de espesores, generación simultánea de pantallazos regulares y de movimiento de tierras con simbología automática.
 
 ### **Paso 5: Generación de Reportes** 📸
 Creación automática de imágenes georeferenciadas y reportes PDF con layout profesional optimizado.
@@ -190,9 +190,8 @@ La interface está organizada en **4 pestañas principales**:
 
 #### **📊 Pestaña 3: Análisis** (con sub-pestañas)
 - **3.1** 📋 Tabla Base: Metadata y coordenadas extremas
-- **3.2** 📏 Volúmenes: Cálculos Cut/Fill incrementales
-- **3.3** 📸 Pantallazos: Generación automática imágenes
-- **3.4** 🗂️ XML: Exportación formato LandXML
+- **3.2** �📸 Volúmenes y Pantallazos: Cálculos Cut/Fill incrementales con generación automática de imágenes de diferencias DEM
+- **3.3** 🗂️ XML: Exportación formato LandXML
 
 #### **📄 Pestaña 4: Reportes**
 - Generación de reportes PDF
@@ -471,17 +470,12 @@ canchas_las_tortolas/
 - Cálculos de áreas 2D y 3D
 - Análisis estadístico de elevaciones
 
-#### **volume_calculation.py** 📏
-- Análisis volumétrico Cut/Fill
-- Comparación con DEM base
-- Cálculo de espesores mínimos/máximos
-- Reportes estadísticos detallados
-
-#### **screenshot_generation.py** 📸
-- Pantallazos automáticos georeferenciados
-- Factor de zoom configurable
-- Exportación en alta resolución
-- Nomenclatura automática con prefijo "P"
+#### **volume_screenshot.py** �📸
+- Módulo unificado de cálculo volumétrico y generación de pantallazos
+- Análisis incremental Cut/Fill con pegado automático de TINs sobre DEMs
+- Generación simultánea de pantallazos regulares y de diferencias DEM
+- Simbología automática para visualización de corte/relleno
+- Validación y limpieza de archivos temporales
 
 #### **xml_export.py** 🗂️
 - Exportación formato LandXML estándar
