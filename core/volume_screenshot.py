@@ -269,24 +269,33 @@ class VolumeScreenshotProcessor:
         base_arr = band_work.ReadAsArray().astype(np.float32)
         patch_arr = ds_patch_aligned.ReadAsArray().astype(np.float32)
 
-        mask = patch_arr != nodata_patch
+        # Máscara mejorada para evitar valores extremos durante el pegado
+        mask = (patch_arr != nodata_patch) & (np.abs(patch_arr) < 1000) & (~np.isnan(patch_arr)) & (~np.isinf(patch_arr))
         if not np.any(mask):
             self.log_callback(f"⚠️ Parche '{patch_layer.name()}' no tiene celdas válidas dentro de la extensión de {dem_layer_name}")
         else:
+            # Logging para debugging del pegado
+            pixeles_validos = np.count_nonzero(mask)
+            rango_patch = f"{np.min(patch_arr[mask]):.2f} a {np.max(patch_arr[mask]):.2f}"
+            self.log_callback(f"🔧 Pegando {pixeles_validos} píxeles válidos (rango: {rango_patch}) sobre '{dem_layer_name}'")
+            
             base_arr[mask] = patch_arr[mask]
             band_work.WriteArray(base_arr)
             band_work.SetNoDataValue(nodata_base)
             band_work.FlushCache()
             ds_work.FlushCache()
-            self.log_callback(f"✅ Parche '{patch_layer.name()}' pegado sobre '{dem_layer_name}' (temporal)")
+            self.log_callback(f"✅ Parche '{patch_layer.name()}' pegado correctamente sobre '{dem_layer_name}'")
 
         ds_patch_aligned = None
         ds_patch = None
         ds_work = None
 
         try:
+            # Forzar recarga completa de la capa desde disco
+            dem.dataProvider().reloadData()
             dem.triggerRepaint()
             if iface:
+                iface.mapCanvas().refresh()
                 iface.mapCanvas().refreshAllLayers()
         except Exception:
             pass
@@ -780,6 +789,13 @@ class VolumeScreenshotProcessor:
                 if not tin_base:
                     self.log_callback(f"⚠️ No se encontró DEM para {muro_code}")
                     continue
+
+                # Forzar recarga de datos de la base antes de calcular (importante para procesamiento incremental)
+                try:
+                    tin_base.dataProvider().reloadData()
+                    tin_base.triggerRepaint()
+                except Exception:
+                    pass
 
                 fecha_str = fecha_base_map.get(base)
                 self.log_callback(f"🔄 Procesando {base} (Fecha: {fecha_str.strftime('%d-%m-%Y') if fecha_str else 'N/A'})")
