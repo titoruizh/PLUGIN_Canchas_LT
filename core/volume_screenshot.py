@@ -38,7 +38,7 @@ import processing
 class VolumeScreenshotProcessor:
     """Procesador unificado de cálculo de volúmenes y generación de pantallazos con diferencias DEM"""
     
-    def __init__(self, proc_root, num_random_points=20, min_espesor=0.001, resample_algorithm='near',
+    def __init__(self, proc_root, num_random_points=20, min_espesor=0.01, resample_algorithm='bilinear',
                  screenshot_width=800, screenshot_height=500, expansion_factor=1.3, 
                  background_layer="tif", progress_callback=None, log_callback=None):
         """
@@ -47,8 +47,8 @@ class VolumeScreenshotProcessor:
         Args:
             proc_root: Carpeta raíz de procesamiento (PROC_ROOT)
             num_random_points: Número de puntos aleatorios para análisis (default 20)
-            min_espesor: Espesor mínimo permitido (default 0.001)
-            resample_algorithm: Algoritmo de remuestreo (default 'near')
+            min_espesor: Espesor mínimo permitido (default 0.01)
+            resample_algorithm: Algoritmo de remuestreo (default 'bilinear' - recomendado para análisis volumétrico)
             screenshot_width: Ancho de imagen en píxeles (default 800)
             screenshot_height: Alto de imagen en píxeles (default 500)
             expansion_factor: Factor de expansión alrededor del área (default 1.3)

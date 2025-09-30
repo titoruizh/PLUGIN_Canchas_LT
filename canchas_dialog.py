@@ -26,11 +26,11 @@ class CanchasDialog(QDialog):
         # Crear widget de pestañas principales (solo 3)
         self.tab_widget = QTabWidget()
         
-        # Crear las 3 pestañas principales
+        # Crear las pestañas principales
         self.create_validation_tab()      # Pestaña 1
         self.create_processing_tab()      # Pestaña 2
         self.create_analysis_tab()        # Pestaña 3 (con sub-pestañas)
-        self.create_reports_tab()         # Pestaña 4 (NUEVA)
+        self.create_reports_tab()         # Pestaña 4 (Datos Reporte)
         
         layout.addWidget(self.tab_widget)
         
@@ -248,46 +248,6 @@ class CanchasDialog(QDialog):
         desc.setStyleSheet("color: gray; margin-bottom: 10px;")
         layout.addWidget(desc)
         
-        # Grupo de parámetros
-        params_group = QtWidgets.QGroupBox("⚙️ Parámetros de Procesamiento")
-        params_layout = QVBoxLayout()
-        
-        # Tamaño de píxel
-        pixel_layout = QHBoxLayout()
-        pixel_layout.addWidget(QLabel("Tamaño de píxel (TIN):"))
-        self.pixel_size = QLineEdit("0.1")
-        self.pixel_size.setMaximumWidth(100)
-        self.pixel_size.setToolTip("Resolución para la interpolación TIN (metros)")
-        pixel_layout.addWidget(self.pixel_size)
-        pixel_layout.addWidget(QLabel("metros"))
-        pixel_layout.addStretch()
-        params_layout.addLayout(pixel_layout)
-        
-        # Tolerancia de suavizado ASC
-        smooth_layout = QHBoxLayout()
-        smooth_layout.addWidget(QLabel("Tolerancia suavizado (ASC):"))
-        self.smooth_tolerance = QLineEdit("1.0")
-        self.smooth_tolerance.setMaximumWidth(100)
-        self.smooth_tolerance.setToolTip("Tolerancia para simplificar geometrías ASC")
-        smooth_layout.addWidget(self.smooth_tolerance)
-        smooth_layout.addWidget(QLabel("metros"))
-        smooth_layout.addStretch()
-        params_layout.addLayout(smooth_layout)
-        
-        # Distancia mínima vértices
-        min_dist_layout = QHBoxLayout()
-        min_dist_layout.addWidget(QLabel("Distancia mínima vértices:"))
-        self.min_dist_vertices = QLineEdit("2.0")
-        self.min_dist_vertices.setMaximumWidth(100)
-        self.min_dist_vertices.setToolTip("Distancia mínima entre vértices extremos")
-        min_dist_layout.addWidget(self.min_dist_vertices)
-        min_dist_layout.addWidget(QLabel("metros"))
-        min_dist_layout.addStretch()
-        params_layout.addLayout(min_dist_layout)
-        
-        params_group.setLayout(params_layout)
-        layout.addWidget(params_group)
-        
         # Grupo de salidas esperadas
         output_group = QtWidgets.QGroupBox("📤 Salidas que se generarán")
         output_layout = QVBoxLayout()
@@ -497,7 +457,7 @@ class CanchasDialog(QDialog):
         # Espesor mínimo
         min_thickness_layout = QHBoxLayout()
         min_thickness_layout.addWidget(QLabel("Espesor mínimo permitido:"))
-        self.min_espesor = QLineEdit("0.001")
+        self.min_espesor = QLineEdit("0.01")
         self.min_espesor.setMaximumWidth(100)
         self.min_espesor.setToolTip("Valor mínimo absoluto para espesores (metros)")
         min_thickness_layout.addWidget(self.min_espesor)
@@ -510,8 +470,12 @@ class CanchasDialog(QDialog):
         resample_layout.addWidget(QLabel("Algoritmo de remuestreo:"))
         self.resample_algorithm = QtWidgets.QComboBox()
         self.resample_algorithm.addItems(['near', 'bilinear', 'cubic', 'cubicspline'])
-        self.resample_algorithm.setCurrentText('near')
-        self.resample_algorithm.setToolTip("Algoritmo para alinear rasters en el pegado incremental")
+        self.resample_algorithm.setCurrentText('bilinear')  # Cambiado a bilinear como default
+        
+        # Conectar cambio de selección para actualizar tooltip dinámico
+        self.resample_algorithm.currentTextChanged.connect(self.update_resample_tooltip)
+        self.update_resample_tooltip('bilinear')  # Establecer tooltip inicial
+        
         resample_layout.addWidget(self.resample_algorithm)
         resample_layout.addStretch()
         config_layout.addLayout(resample_layout)
@@ -748,35 +712,6 @@ class CanchasDialog(QDialog):
         desc.setStyleSheet("color: gray; margin-bottom: 10px;")
         layout.addWidget(desc)
         
-        # Configuración de exportación
-        export_group = QtWidgets.QGroupBox("🔧 Configuración de Exportación")
-        export_layout = QVBoxLayout()
-        
-        # Intercambio XY
-        swap_layout = QHBoxLayout()
-        self.swap_xy = QtWidgets.QCheckBox("Intercambiar coordenadas X-Y")
-        self.swap_xy.setChecked(True)
-        self.swap_xy.setToolTip("Intercambia X e Y en la exportación (común para algunos sistemas)")
-        swap_layout.addWidget(self.swap_xy)
-        swap_layout.addStretch()
-        export_layout.addLayout(swap_layout)
-        
-        # Paso de muestreo para rasters
-        raster_step_layout = QHBoxLayout()
-        raster_step_layout.addWidget(QLabel("Paso de muestreo (rasters ASC):"))
-        self.raster_sample_step = QtWidgets.QSpinBox()
-        self.raster_sample_step.setMinimum(1)
-        self.raster_sample_step.setMaximum(10)
-        self.raster_sample_step.setValue(2)
-        self.raster_sample_step.setToolTip("Cada cuántos píxeles muestrear del raster (1=todos, 2=cada 2, etc)")
-        raster_step_layout.addWidget(self.raster_sample_step)
-        raster_step_layout.addWidget(QLabel("píxeles"))
-        raster_step_layout.addStretch()
-        export_layout.addLayout(raster_step_layout)
-        
-        export_group.setLayout(export_layout)
-        layout.addWidget(export_group)
-        
         # Formato LandXML
         format_group = QtWidgets.QGroupBox("📋 Formato LandXML")
         format_layout = QVBoxLayout()
@@ -785,7 +720,11 @@ class CanchasDialog(QDialog):
     UNIDADES: Métricos (metro, metro cuadrado, metro cúbico)
     SUPERFICIE: Triangulated Irregular Network (TIN)
     DATOS: Puntos 3D + Caras triangulares
-    METADATOS: Área 2D/3D, elevación mín/máx""")
+    METADATOS: Área 2D/3D, elevación mín/máx
+    
+    CONFIGURACIÓN: Optimizada automáticamente
+    • Intercambio XY: Activado
+    • Muestreo rasters: Cada 2 píxeles""")
         format_info.setStyleSheet("font-family: 'Courier New'; color: #555; background-color: #f3f0ff; padding: 10px; border: 1px solid #6A4C93; border-radius: 3px;")
         format_layout.addWidget(format_info)
         
@@ -948,6 +887,69 @@ class CanchasDialog(QDialog):
         self.progress_bar.setValue(value)
         if message:
             self.log_message(f"📋 {message}")
+    
+    def update_resample_tooltip(self, algorithm):
+        """Actualiza el tooltip del algoritmo de remuestreo según la selección"""
+        tooltips = {
+            'near': """🔵 NEAR (Vecino más cercano) - RÁPIDO
+            
+✅ VENTAJAS:
+• Más rápido computacionalmente
+• Preserva valores originales exactamente  
+• No introduce nuevos valores
+
+❌ DESVENTAJAS:
+• Puede crear efectos de escalera
+• Menos suave visualmente
+• Discontinuidades en análisis volumétrico
+
+💡 MEJOR PARA: Datos categóricos o cuando se requiere velocidad máxima""",
+
+            'bilinear': """🟢 BILINEAR (Interpolación Bilineal) - RECOMENDADO ⭐
+            
+✅ VENTAJAS:
+• Equilibrio perfecto velocidad/calidad
+• Transiciones suaves y realistas
+• Ideal para análisis volumétrico
+• Reduce efectos de escalera
+
+❌ DESVENTAJAS:
+• Introduce valores promediados
+• Ligeramente más lento que NEAR
+
+💡 MEJOR PARA: Análisis volumétrico, topografía, datos continuos (TU CASO)""",
+
+            'cubic': """🟡 CUBIC (Interpolación Cúbica) - ALTA CALIDAD
+            
+✅ VENTAJAS:
+• Muy suave y realista
+• Preserva mejor las curvas
+• Excelente calidad visual
+• Ideal para visualización
+
+❌ DESVENTAJAS:
+• Más lento que bilinear
+• Puede crear valores irreales (overshooting)
+• Computacionalmente intensivo
+
+💡 MEJOR PARA: Visualización de alta calidad, análisis detallados""",
+
+            'cubicspline': """🔴 CUBIC SPLINE - MÁXIMA CALIDAD
+            
+✅ VENTAJAS:
+• Máxima suavidad posible
+• Mejor preservación de curvaturas
+• Calidad visual superior
+
+❌ DESVENTAJAS:
+• El más lento de todos
+• Mayor posibilidad de artefactos
+• Puede ser excesivo para análisis volumétrico
+
+💡 MEJOR PARA: Análisis científicos muy detallados, investigación avanzada"""
+        }
+        
+        self.resample_algorithm.setToolTip(tooltips.get(algorithm, "Algoritmo de remuestreo para alinear rasters"))
         
     def ejecutar_procesamiento(self):
         """Ejecutar proceso de procesamiento espacial"""
@@ -962,20 +964,24 @@ class CanchasDialog(QDialog):
         
         self.log_message("⚙️ Iniciando procesamiento espacial...")
         self.log_message(f"📁 PROC_ROOT: {self.proc_root.text()}")
-        self.log_message(f"🔧 Píxel TIN: {self.pixel_size.text()} metros")
-        self.log_message(f"🎯 Tolerancia suavizado: {self.smooth_tolerance.text()} metros")
-        self.log_message(f"📏 Distancia mínima vértices: {self.min_dist_vertices.text()} metros")
+        # Parámetros fijos de procesamiento optimizados (configurables en código)
+        pixel_size = 0.1  # Resolución TIN en metros
+        suavizado_tolerance = 1.0  # Tolerancia suavizado ASC en metros  
+        min_dist_vertices = 2.0  # Distancia mínima entre vértices en metros
+        self.log_message(f"🔧 Píxel TIN: {pixel_size} metros")
+        self.log_message(f"🎯 Tolerancia suavizado: {suavizado_tolerance} metros")
+        self.log_message(f"📏 Distancia mínima vértices: {min_dist_vertices} metros")
         
         try:
             # Importar el procesador
             from .core.processing import ProcessingProcessor
             
-            # Crear procesador con parámetros de la GUI
+            # Crear procesador con parámetros optimizados
             processor = ProcessingProcessor(
                 proc_root=self.proc_root.text(),
-                pixel_size=float(self.pixel_size.text()),
-                suavizado_tolerance=float(self.smooth_tolerance.text()),
-                min_dist_vertices=float(self.min_dist_vertices.text()),
+                pixel_size=pixel_size,
+                suavizado_tolerance=suavizado_tolerance,
+                min_dist_vertices=min_dist_vertices,
                 progress_callback=self.update_progress,
                 log_callback=self.log_message
             )
@@ -1213,18 +1219,21 @@ class CanchasDialog(QDialog):
         
         self.log_message("📄 Iniciando exportación a LandXML...")
         self.log_message(f"📁 PROC_ROOT: {self.proc_root.text()}")
-        self.log_message(f"🔄 Intercambiar X-Y: {'Sí' if self.swap_xy.isChecked() else 'No'}")
-        self.log_message(f"📐 Paso muestreo rasters: {self.raster_sample_step.value()} píxeles")
+        # Configuración optimizada fija (configurable en código)
+        swap_xy = True  # Intercambiar coordenadas X-Y (común para sistemas locales)
+        raster_sample_step = 2  # Muestreo cada 2 píxeles (equilibrio calidad/rendimiento)
+        self.log_message(f"🔄 Intercambiar X-Y: {'Sí' if swap_xy else 'No'}")
+        self.log_message(f"📐 Paso muestreo rasters: {raster_sample_step} píxeles")
         
         try:
             # Importar el procesador
             from .core.xml_export import XMLExportProcessor
             
-            # Crear procesador con parámetros de la GUI
+            # Crear procesador con configuración optimizada
             processor = XMLExportProcessor(
                 proc_root=self.proc_root.text(),
-                swap_xy=self.swap_xy.isChecked(),
-                raster_sample_step=self.raster_sample_step.value(),
+                swap_xy=swap_xy,
+                raster_sample_step=raster_sample_step,
                 progress_callback=self.update_progress,
                 log_callback=self.log_message
             )
@@ -1252,7 +1261,7 @@ class CanchasDialog(QDialog):
             self.progress_bar.setVisible(False)
 
     def create_reports_tab(self):
-        """Pestaña 4: Reportes PDF"""
+        """Pestaña 4: Datos para Reporte"""
         tab = QtWidgets.QWidget()
         layout = QVBoxLayout()
         
@@ -1260,75 +1269,113 @@ class CanchasDialog(QDialog):
         header_layout = QHBoxLayout()
         icon_label = QLabel("📄")
         icon_label.setStyleSheet("font-size: 24px; margin-right: 10px;")
-        title_label = QLabel("REPORTES PDF")
+        title_label = QLabel("DATOS PARA REPORTE")
         title_label.setStyleSheet("font-weight: bold; font-size: 16px; color: #2E4057;")
         header_layout.addWidget(icon_label)
         header_layout.addWidget(title_label)
         header_layout.addStretch()
         layout.addLayout(header_layout)
         
-        desc = QLabel("Genera protocolos PDF por muro usando Atlas con la plantilla QPT")
+        desc = QLabel("Genera datos auxiliares para reportes y realiza análisis histórico")
         desc.setStyleSheet("color: gray; margin-bottom: 15px; font-size: 12px;")
         layout.addWidget(desc)
         
         # Configuración de reportes
-        config_group = QtWidgets.QGroupBox("📋 Configuración de Reportes")
+        config_group = QtWidgets.QGroupBox("📋 Tablas utilizadas")
         config_layout = QVBoxLayout()
         
-        # Info de la plantilla
-        template_info = QLabel(f"📄 Plantilla: Plantilla_Protocolos_LT.qpt")
-        template_info.setStyleSheet("color: #666; margin: 5px 0;")
-        config_layout.addWidget(template_info)
-        
-        # Info de la tabla
-        table_info = QLabel("📊 Fuente de datos: Tabla Base Datos")
+        # Info de la tabla base
+        table_info = QLabel("� Tabla Base Datos: Contiene los datos actuales")
         table_info.setStyleSheet("color: #666; margin: 5px 0;")
         config_layout.addWidget(table_info)
         
-        # Formato
-        format_info = QLabel("📐 Formato: A4 Vertical, 300 DPI")
-        format_info.setStyleSheet("color: #666; margin: 5px 0;")
-        config_layout.addWidget(format_info)
+        # Info de la tabla histórica
+        table_hist_info = QLabel("📊 DATOS HISTORICOS: Almacena todos los datos históricos y actuales")
+        table_hist_info.setStyleSheet("color: #666; margin: 5px 0;")
+        config_layout.addWidget(table_hist_info)
         
         config_group.setLayout(config_layout)
         layout.addWidget(config_group)
         
-        # Muros a generar
-        muros_group = QtWidgets.QGroupBox("🗺️ Reportes por Muro")
-        muros_layout = QVBoxLayout()
+        # Proceso de Fusión
+        merge_group = QtWidgets.QGroupBox("� Proceso de Fusión de Datos")
+        merge_layout = QVBoxLayout()
         
-        muros_info = QLabel("""Se generarán 3 archivos PDF filtrados por muro:
+        merge_info = QLabel("""Al ejecutar "Generar Datos Reporte", se realizan las siguientes acciones:
 
-        📄 Protocolos_PRINCIPAL.pdf → Registros con Muro = 'Principal'
-        📄 Protocolos_OESTE.pdf → Registros con Muro = 'Oeste'  
-        📄 Protocolos_ESTE.pdf → Registros con Muro = 'Este'
+        0️⃣ Detección y normalización automática de formatos de fecha
+        1️⃣ Fusión de datos históricos
+        2️⃣ Análisis histórico (fechas de intervención y crecimiento anual)
+        3️⃣ Generación de gráficos de barras por sector (G1)
+        4️⃣ Generación de series temporales de espesores (G2)
+        5️⃣ Generación de pantallazos heatmap (PH)
+        6️⃣ Clasificación automática de espesores
 
-        Cada PDF contiene todas las hojas del muro ordenadas por Protocolo Topográfico""")
-        muros_info.setStyleSheet("font-family: 'Courier New'; color: #555; background-color: #f8f8f8; padding: 10px; border: 1px solid #ddd; border-radius: 3px;")
-        muros_layout.addWidget(muros_info)
+        La tabla "DATOS HISTORICOS" queda actualizada con todos los datos procesados
+        y es la que debe utilizarse como fuente para reportes.""")
+        merge_info.setStyleSheet("font-family: 'Courier New'; color: #555; background-color: #f8f8f8; padding: 10px; border: 1px solid #ddd; border-radius: 3px;")
+        merge_layout.addWidget(merge_info)
         
-        muros_group.setLayout(muros_layout)
-        layout.addWidget(muros_group)
+        merge_group.setLayout(merge_layout)
+        layout.addWidget(merge_group)
         
-        # Recursos necesarios
-        recursos_group = QtWidgets.QGroupBox("📁 Recursos Necesarios")
-        recursos_layout = QVBoxLayout()
+        # Análisis histórico
+        historical_group = QtWidgets.QGroupBox("📈 Análisis Histórico")
+        historical_layout = QVBoxLayout()
         
-        recursos_info = QLabel("""PLANTILLA: resources/templates/Plantilla_Protocolos_LT.qpt
-        LOGOS: resources/logos/ (archivos PNG/JPG)
-        FIRMAS: resources/firmas/{operador}.png (mapeo automático)
+        # Periodo para crecimiento anual
+        period_layout = QHBoxLayout()
+        period_layout.addWidget(QLabel("Periodo para cálculo de crecimiento anual:"))
+        self.dias_crecimiento = QtWidgets.QSpinBox()
+        self.dias_crecimiento.setMinimum(30)
+        self.dias_crecimiento.setMaximum(730)  # 2 años
+        self.dias_crecimiento.setValue(365)    # 1 año por defecto
+        self.dias_crecimiento.setSuffix(" días")
+        period_layout.addWidget(self.dias_crecimiento)
+        period_layout.addStretch()
+        historical_layout.addLayout(period_layout)
         
-        Las rutas se actualizan automáticamente en la plantilla""")
-        recursos_info.setStyleSheet("font-family: 'Courier New'; color: #555; background-color: #fff8e7; padding: 10px; border: 1px solid #F18F01; border-radius: 3px;")
-        recursos_layout.addWidget(recursos_info)
+        # Información de columnas generadas
+        columnas_info = QLabel("""El proceso de análisis histórico genera las siguientes columnas:
+
+1️⃣ "Ultima Intervencion": Fecha de última intervención para mismo Muro/Sector
+    • Busca en DATOS HISTORICOS intervenciones anteriores a la fecha del registro
+    • Formato: YYYY-MM-DD (ej: 2025-05-15)
+
+2️⃣ "Ultimo Crecimiento Anual": Suma de espesores en el período configurado
+    • Calcula la suma de espesores para registros dentro del período establecido
+    • Formato: Número decimal (ej: 24.464)""")
+        columnas_info.setStyleSheet("font-family: 'Courier New'; color: #555; background-color: #f0f0ff; padding: 10px; border: 1px solid #ddd; border-radius: 3px; margin-top: 10px;")
+        historical_layout.addWidget(columnas_info)
         
-        recursos_group.setLayout(recursos_layout)
-        layout.addWidget(recursos_group)
+        historical_group.setLayout(historical_layout)
+        layout.addWidget(historical_group)
+        
+        # Clasificación de Espesores
+        clasificacion_group = QtWidgets.QGroupBox("📏 Clasificación Automática de Espesores")
+        clasificacion_layout = QVBoxLayout()
+        
+        clasificacion_info = QLabel("""Durante el proceso de "Generar Datos Reporte" se ejecutan automáticamente:
+
+📅 Normalización de fechas: Detecta y convierte formatos automáticamente
+📏 Clasificación de espesores según rangos:
+• Mayor a 1.3 = "Triple Capa"
+• Mayor a 0.8 = "Doble Capa" 
+• Mayor a 0.2 = "Relleno"
+• Entre -0.2 a 0.2 = "Corte Relleno"
+• Menor a -0.2 = "Corte"
+
+La columna 'Comentarios Espesor' se crea/actualiza automáticamente en 'Tabla Base Datos'.""")
+        clasificacion_info.setStyleSheet("font-family: 'Courier New'; color: #555; background-color: #f9f9f9; padding: 10px; border: 1px solid #ddd; border-radius: 3px;")
+        clasificacion_layout.addWidget(clasificacion_info)
+        
+        clasificacion_group.setLayout(clasificacion_layout)
+        layout.addWidget(clasificacion_group)
         
         layout.addStretch()
         
-        # Botón ejecutar
-        self.btn_reports = QPushButton("📄 Generar Reportes PDF por Muro")
+        # Botón ejecutar - CAMBIADO
+        self.btn_reports = QPushButton("� Generar Datos Reporte")
         self.btn_reports.setStyleSheet("""
             QPushButton {
                 background-color: #2E4057; 
@@ -1346,58 +1393,465 @@ class CanchasDialog(QDialog):
                 background-color: #1E2B3A;
             }
         """)
-        self.btn_reports.clicked.connect(self.ejecutar_reportes)
+        self.btn_reports.clicked.connect(self.ejecutar_fusion_y_analisis)
         layout.addWidget(self.btn_reports)
         
         tab.setLayout(layout)
-        self.tab_widget.addTab(tab, "4. Reportes")
+        self.tab_widget.addTab(tab, "4. Datos Reporte")
 
-    def ejecutar_reportes(self):
-        """Ejecutar proceso de generación de reportes PDF"""
-        # Verificar que PROC_ROOT esté configurado
-        if not self.proc_root.text().strip():
-            self.log_message("❌ Error: Debe configurar la carpeta de procesamiento")
-            return
-
+    def ejecutar_fusion_datos(self):
+        """Ejecutar proceso de fusión de datos para reportes"""
         # Mostrar progreso
         self.progress_bar.setVisible(True)
         self.progress_bar.setValue(0)
         
-        self.log_message("📄 Iniciando generación de reportes PDF...")
-        self.log_message(f"📁 PROC_ROOT: {self.proc_root.text()}")
+        self.log_message("� Iniciando fusión de datos para reportes...")
         
         try:
             # Importar el procesador
-            from .core.pdf_reports import PDFReportsProcessor
-            
-            # Obtener directorio del plugin
-            plugin_dir = os.path.dirname(__file__)
+            from .core.data_merge import DataMergeProcessor
             
             # Crear procesador
-            processor = PDFReportsProcessor(
-                proc_root=self.proc_root.text(),
-                plugin_dir=plugin_dir,
+            processor = DataMergeProcessor(
                 progress_callback=self.update_progress,
                 log_callback=self.log_message
             )
             
-            # Ejecutar generación completa
-            resultado = processor.ejecutar_generacion_reportes_completa()
+            # Ejecutar fusión de datos
+            resultado = processor.fusionar_datos_historicos()
             
             if resultado['success']:
-                self.log_message("🎉 ¡Reportes PDF generados exitosamente!")
-                reportes = resultado.get('reportes_generados', [])
-                for reporte in reportes:
-                    self.log_message(f"📄 {reporte['muro']}: {reporte['archivo']}")
-                self.log_message(f"📁 Guardados en: {resultado.get('carpeta_salida', 'N/A')}")
+                self.log_message("🎉 ¡Fusión de datos completada exitosamente!")
+                self.log_message(f"📊 Registros copiados: {resultado.get('registros_copiados', 0)}")
+                self.log_message(f"📊 Nuevos registros: {resultado.get('nuevos_ids', 0)}")
+                self.log_message(f"� Total de registros en DATOS HISTORICOS: {resultado.get('total_registros', 0)}")
+                self.log_message(f"ℹ️ Ahora puede usar la tabla 'DATOS HISTORICOS' para crear reportes manualmente en el compositor de QGIS")
                 self.save_settings()
             else:
                 self.log_message(f"❌ Error: {resultado['message']}")
-                if 'recursos_faltantes' in resultado:
-                    self.log_message("📋 Recursos faltantes:")
-                    for recurso in resultado['recursos_faltantes']:
-                        self.log_message(f"  • {recurso}")
+                if 'details' in resultado:
+                    self.log_message("📋 Ver detalles del error arriba")
                 
+        except ImportError as e:
+            self.log_message(f"❌ Error de importación: {e}")
+            self.log_message("ℹ️ Asegúrese de que el archivo data_merge.py exista en la carpeta core/")
+        except Exception as e:
+            self.log_message(f"❌ Error inesperado: {e}")
+        finally:
+            self.progress_bar.setVisible(False)
+    
+    def ejecutar_fusion_y_analisis(self):
+        """Ejecutar proceso de fusión de datos, análisis histórico y generación de gráficos"""
+        # Mostrar progreso
+        self.progress_bar.setVisible(True)
+        self.progress_bar.setValue(0)
+        
+        # Paso 1: Fusionar datos
+        self.log_message("🔄 Iniciando proceso completo (fusión + análisis + gráficos)...")
+        
+        try:
+            # Importar el procesador
+            from .core.data_merge import DataMergeProcessor
+            
+            # Crear procesador
+            processor = DataMergeProcessor(
+                progress_callback=self.update_progress,
+                log_callback=self.log_message
+            )
+            
+            # Ejecutar fusión de datos
+            self.log_message("📋 Paso 1: Fusión de datos históricos...")
+            resultado = processor.fusionar_datos_historicos()
+            
+            if resultado['success']:
+                self.log_message("✅ Fusión de datos completada")
+                self.log_message(f"📊 Registros copiados: {resultado.get('registros_copiados', 0)}")
+                self.log_message(f"📊 Nuevos registros: {resultado.get('nuevos_ids', 0)}")
+                self.log_message(f"📋 Total de registros en DATOS HISTORICOS: {resultado.get('total_registros', 0)}")
+                
+                # Paso 2: Análisis histórico
+                self.log_message("📈 Paso 2: Iniciando análisis histórico...")
+                self.log_message(f"⚙️ Periodo crecimiento anual: {self.dias_crecimiento.value()} días")
+                
+                try:
+                    # Importar el procesador
+                    from .core.historical_analysis import HistoricalAnalysisProcessor
+                    
+                    # Crear procesador
+                    processor_hist = HistoricalAnalysisProcessor(
+                        progress_callback=self.update_progress,
+                        log_callback=self.log_message
+                    )
+                    
+                    # Ejecutar análisis histórico
+                    resultado_hist = processor_hist.ejecutar_analisis_historico_completo(
+                        dias_crecimiento_anual=self.dias_crecimiento.value()
+                    )
+                    
+                    if resultado_hist['success']:
+                        self.log_message("✅ Análisis histórico completado")
+                        
+                        # Mostrar resumen de intervenciones
+                        resultado_interv = resultado_hist.get('resultado_intervencion', {})
+                        self.log_message(f"📅 Análisis de intervenciones:")
+                        self.log_message(f"  • Registros con intervención: {resultado_interv.get('registros_actualizados', 0)}")
+                        self.log_message(f"  • Registros sin intervención previa: {resultado_interv.get('registros_sin_intervencion', 0)}")
+                        
+                        # Mostrar resumen de crecimiento
+                        resultado_crec = resultado_hist.get('resultado_crecimiento', {})
+                        self.log_message(f"📏 Análisis de crecimiento anual:")
+                        self.log_message(f"  • Registros con crecimiento calculado: {resultado_crec.get('registros_actualizados', 0)}")
+                        self.log_message(f"  • Registros sin datos suficientes: {resultado_crec.get('registros_sin_datos', 0)}")
+                        
+                        self.log_message(f"🔄 Total de registros analizados: {resultado_hist.get('registros_totales', 0)}")
+                        
+                        # Paso 3: Generar gráficos de barras
+                        self.log_message("📊 Paso 3: Generando gráficos de barras por sector...")
+                        
+                        try:
+                            # Importar el generador de gráficos (usando la versión simple)
+                            from .core.bar_charts_simple import SimpleBarChartGenerator
+                            
+                            # Obtener la ruta de procesamiento
+                            proc_root = self.proc_root.text().strip()
+                            if not proc_root:
+                                self.log_message("⚠️ No se ha configurado la carpeta PROC_ROOT. No se generarán gráficos.")
+                            else:
+                                # Crear generador de gráficos
+                                chart_generator = SimpleBarChartGenerator(
+                                    proc_root=proc_root,
+                                    progress_callback=self.update_progress,
+                                    log_callback=self.log_message
+                                )
+                                
+                                # Ejecutar generación de gráficos
+                                resultado_charts = chart_generator.generar_graficos_barras()
+                                
+                                if resultado_charts['success']:
+                                    self.log_message("✅ Generación de gráficos completada")
+                                    self.log_message(f"📊 Gráficos generados: {resultado_charts.get('graficos_generados', 0)}")
+                                    if resultado_charts.get('graficos_fallidos', 0) > 0:
+                                        self.log_message(f"⚠️ Gráficos fallidos: {resultado_charts.get('graficos_fallidos', 0)}")
+                                    self.log_message(f"📁 Carpeta de gráficos: {resultado_charts.get('carpeta_salida', '')}")
+                                else:
+                                    self.log_message(f"❌ Error en generación de gráficos: {resultado_charts['message']}")
+                                    if 'details' in resultado_charts:
+                                        self.log_message("📋 Ver detalles del error arriba")
+                        
+                        except ImportError as e:
+                            self.log_message(f"❌ Error de importación: {e}")
+                            self.log_message("ℹ️ Asegúrese de que el archivo bar_charts_simple.py exista en la carpeta core/")
+                        except Exception as e:
+                            import traceback
+                            self.log_message(f"❌ Error inesperado en generación de gráficos: {e}")
+                            self.log_message(traceback.format_exc())
+                        
+                        # Paso 4: Generar gráficos de series temporales
+                        self.log_message("📈 Paso 4: Generando gráficos de series temporales...")
+                        
+                        try:
+                            # Importar el generador de series temporales
+                            from .core.time_series_charts import TimeSeriesChartGenerator
+                            
+                            # Obtener la ruta de procesamiento
+                            proc_root = self.proc_root.text().strip()
+                            if not proc_root:
+                                self.log_message("⚠️ No se ha configurado la carpeta PROC_ROOT. No se generarán series temporales.")
+                            else:
+                                # Crear generador de series temporales
+                                series_generator = TimeSeriesChartGenerator(
+                                    proc_root=proc_root,
+                                    progress_callback=self.update_progress,
+                                    log_callback=self.log_message
+                                )
+                                
+                                # Ejecutar generación de series temporales
+                                resultado_series = series_generator.generar_graficos_series_temporales()
+                                
+                                if resultado_series['success']:
+                                    self.log_message("✅ Generación de series temporales completada")
+                                    self.log_message(f"📈 Series temporales generadas: {resultado_series.get('graficos_generados', 0)}")
+                                    if resultado_series.get('graficos_fallidos', 0) > 0:
+                                        self.log_message(f"⚠️ Series temporales fallidas: {resultado_series.get('graficos_fallidos', 0)}")
+                                    self.log_message(f"📁 Carpeta de series temporales: {resultado_series.get('carpeta_salida', '')}")
+                                else:
+                                    self.log_message(f"❌ Error en generación de series temporales: {resultado_series['message']}")
+                                    if 'details' in resultado_series:
+                                        self.log_message("📋 Ver detalles del error arriba")
+                        
+                        except ImportError as e:
+                            self.log_message(f"❌ Error de importación: {e}")
+                            self.log_message("ℹ️ Asegúrese de que el archivo time_series_charts.py exista en la carpeta core/")
+                        except Exception as e:
+                            import traceback
+                            self.log_message(f"❌ Error inesperado en generación de series temporales: {e}")
+                            self.log_message(traceback.format_exc())
+                        
+                        # Paso 5: Generar pantallazos heatmap
+                        self.log_message("📷 Paso 5: Generando pantallazos heatmap...")
+                        
+                        try:
+                            # Importar el generador de pantallazos heatmap
+                            from .core.heatmap_screenshots import HeatmapScreenshotGenerator
+                            
+                            # Obtener la ruta de procesamiento
+                            proc_root = self.proc_root.text().strip()
+                            if not proc_root:
+                                self.log_message("⚠️ No se ha configurado la carpeta PROC_ROOT. No se generarán pantallazos heatmap.")
+                            else:
+                                # Crear generador de pantallazos heatmap
+                                heatmap_generator = HeatmapScreenshotGenerator(
+                                    proc_root=proc_root,
+                                    progress_callback=self.update_progress,
+                                    log_callback=self.log_message
+                                )
+                                
+                                # Ejecutar generación de pantallazos heatmap
+                                resultado_heatmap = heatmap_generator.generar_pantallazos_heatmap()
+                                
+                                if resultado_heatmap['success']:
+                                    self.log_message("✅ Generación de pantallazos heatmap completada")
+                                    self.log_message(f"📷 Pantallazos heatmap generados: {resultado_heatmap.get('graficos_generados', 0)}")
+                                    if resultado_heatmap.get('graficos_fallidos', 0) > 0:
+                                        self.log_message(f"⚠️ Pantallazos heatmap fallidos: {resultado_heatmap.get('graficos_fallidos', 0)}")
+                                    self.log_message(f"📁 Carpeta de pantallazos heatmap: {resultado_heatmap.get('carpeta_salida', '')}")
+                                else:
+                                    self.log_message(f"❌ Error en generación de pantallazos heatmap: {resultado_heatmap['message']}")
+                                    if 'details' in resultado_heatmap:
+                                        self.log_message("📋 Ver detalles del error arriba")
+                        
+                        except ImportError as e:
+                            self.log_message(f"❌ Error de importación: {e}")
+                            self.log_message("ℹ️ Asegúrese de que el archivo heatmap_screenshots.py exista en la carpeta core/")
+                        except Exception as e:
+                            import traceback
+                            self.log_message(f"❌ Error inesperado en generación de pantallazos heatmap: {e}")
+                            self.log_message(traceback.format_exc())
+                        
+                        # Paso 6: Clasificar espesores automáticamente
+                        self.log_message("📏 Paso 6: Clasificando espesores automáticamente...")
+                        
+                        try:
+                            # Importar el procesador de clasificación
+                            from .core.espesor_classification import EspesorClassificationProcessor
+                            
+                            # Crear procesador
+                            processor_espesor = EspesorClassificationProcessor(
+                                progress_callback=self.update_progress,
+                                log_callback=self.log_message
+                            )
+                            
+                            # Ejecutar clasificación
+                            resultado_espesor = processor_espesor.ejecutar_clasificacion_espesor()
+                            
+                            if resultado_espesor['success']:
+                                self.log_message("✅ Clasificación de espesores completada")
+                                self.log_message(f"📊 Registros procesados: {resultado_espesor.get('registros_procesados', 0)}")
+                                self.log_message(f"📋 Columna 'Comentarios Espesor' actualizada")
+                            else:
+                                self.log_message(f"❌ Error en clasificación de espesores: {resultado_espesor['message']}")
+                                if 'details' in resultado_espesor:
+                                    self.log_message("📋 Ver detalles del error arriba")
+                        
+                        except ImportError as e:
+                            self.log_message(f"❌ Error de importación: {e}")
+                            self.log_message("ℹ️ Asegúrese de que el archivo espesor_classification.py exista en la carpeta core/")
+                        except Exception as e:
+                            import traceback
+                            self.log_message(f"❌ Error inesperado en clasificación de espesores: {e}")
+                            self.log_message(traceback.format_exc())
+                        
+                        # Mensaje final
+                        self.log_message("🎉 PROCESO COMPLETO FINALIZADO CON ÉXITO")
+                        self.save_settings()
+                    else:
+                        self.log_message(f"❌ Error en análisis histórico: {resultado_hist['message']}")
+                        if 'details' in resultado_hist:
+                            self.log_message("📋 Ver detalles del error arriba")
+                        
+                except ImportError as e:
+                    self.log_message(f"❌ Error de importación: {e}")
+                    self.log_message("ℹ️ Asegúrese de que el archivo historical_analysis.py exista en la carpeta core/")
+                except Exception as e:
+                    self.log_message(f"❌ Error inesperado en análisis histórico: {e}")
+            else:
+                self.log_message(f"❌ Error en fusión: {resultado['message']}")
+                if 'details' in resultado:
+                    self.log_message("📋 Ver detalles del error arriba")
+                
+        except ImportError as e:
+            self.log_message(f"❌ Error de importación: {e}")
+            self.log_message("ℹ️ Asegúrese de que el archivo data_merge.py exista en la carpeta core/")
+        except Exception as e:
+            self.log_message(f"❌ Error inesperado en fusión: {e}")
+        finally:
+            self.progress_bar.setVisible(False)
+            
+    def ejecutar_reportes(self):
+        """MÉTODO LEGACY - Ya no se utiliza pero se mantiene por compatibilidad"""
+        self.log_message("⚠️ Esta funcionalidad ha sido reemplazada por 'Generar Datos Reporte'")
+        self.log_message("ℹ️ Los reportes ahora se crean manualmente en el compositor de impresiones de QGIS")
+        self.log_message("ℹ️ Use la tabla 'DATOS HISTORICOS' como fuente de datos para sus reportes")
+        
+    def create_historical_tab(self):
+        """Pestaña 5: Análisis Histórico"""
+        tab = QtWidgets.QWidget()
+        layout = QVBoxLayout()
+        
+        # Header principal
+        header_layout = QHBoxLayout()
+        icon_label = QLabel("📈")
+        icon_label.setStyleSheet("font-size: 24px; margin-right: 10px;")
+        title_label = QLabel("ANÁLISIS HISTÓRICO")
+        title_label.setStyleSheet("font-weight: bold; font-size: 16px; color: #5F4B8B;")
+        header_layout.addWidget(icon_label)
+        header_layout.addWidget(title_label)
+        header_layout.addStretch()
+        layout.addLayout(header_layout)
+        
+        desc = QLabel("Realiza análisis de datos históricos para calcular fechas de intervención y crecimiento anual")
+        desc.setStyleSheet("color: gray; margin-bottom: 15px; font-size: 12px;")
+        layout.addWidget(desc)
+        
+        # Configuración del análisis histórico
+        config_group = QtWidgets.QGroupBox("⚙️ Configuración de Análisis")
+        config_layout = QVBoxLayout()
+        
+        # Periodo para crecimiento anual
+        period_layout = QHBoxLayout()
+        period_layout.addWidget(QLabel("Periodo para crecimiento anual:"))
+        self.dias_crecimiento = QtWidgets.QSpinBox()
+        self.dias_crecimiento.setMinimum(30)
+        self.dias_crecimiento.setMaximum(730)  # 2 años
+        self.dias_crecimiento.setValue(365)    # 1 año por defecto
+        self.dias_crecimiento.setSuffix(" días")
+        period_layout.addWidget(self.dias_crecimiento)
+        period_layout.addStretch()
+        config_layout.addLayout(period_layout)
+        
+        config_group.setLayout(config_layout)
+        layout.addWidget(config_group)
+        
+        # Columnas generadas
+        columnas_group = QtWidgets.QGroupBox("📊 Columnas que se Generarán")
+        columnas_layout = QVBoxLayout()
+        
+        columnas_info = QLabel("""1️⃣ "Ultima Intervencion": Fecha de la última intervención en el mismo Muro y Sector
+    • Input: Muro, Sector y Fecha de cada registro
+    • Busca en DATOS HISTORICOS intervenciones anteriores
+    • Formato: YYYY-MM-DD (ej: 2025-05-15)
+
+2️⃣ "Ultimo Crecimiento Anual": Suma de espesores en el periodo configurado
+    • Input: Muro, Sector y Fecha de cada registro
+    • Calcula suma de espesores en el periodo definido
+    • Formato: Número decimal (ej: 24.464)""")
+        columnas_info.setStyleSheet("font-family: 'Courier New'; color: #555; background-color: #f8f8f8; padding: 10px; border: 1px solid #5F4B8B; border-radius: 3px;")
+        columnas_layout.addWidget(columnas_info)
+        
+        columnas_group.setLayout(columnas_layout)
+        layout.addWidget(columnas_group)
+        
+        # Proceso detallado
+        proceso_group = QtWidgets.QGroupBox("🔄 Proceso de Análisis")
+        proceso_layout = QVBoxLayout()
+        
+        proceso_info = QLabel("""El proceso de análisis realiza dos cálculos principales:
+
+1. ÚLTIMA INTERVENCIÓN:
+   • Para cada registro de "Tabla Base Datos"
+   • Busca en "DATOS HISTORICOS" registros con el mismo Muro y Sector
+   • Identifica la fecha más reciente anterior a la fecha del registro
+   • Guarda esta fecha como "Ultima Intervencion"
+
+2. CRECIMIENTO ANUAL:
+   • Para cada registro de "Tabla Base Datos"
+   • Busca en "DATOS HISTORICOS" registros con el mismo Muro y Sector
+   • Dentro del periodo configurado (365 días por defecto)
+   • Suma todos los espesores encontrados
+   • Guarda este valor como "Ultimo Crecimiento Anual"
+""")
+        proceso_info.setStyleSheet("font-family: 'Courier New'; color: #555; background-color: #f0f0ff; padding: 10px; border: 1px solid #5F4B8B; border-radius: 3px;")
+        proceso_layout.addWidget(proceso_info)
+        
+        proceso_group.setLayout(proceso_layout)
+        layout.addWidget(proceso_group)
+        
+        layout.addStretch()
+        
+        # Botón ejecutar
+        self.btn_historical = QPushButton("📈 Ejecutar Análisis Histórico")
+        self.btn_historical.setStyleSheet("""
+            QPushButton {
+                background-color: #5F4B8B; 
+                color: white; 
+                font-weight: bold; 
+                padding: 12px; 
+                border: none; 
+                border-radius: 5px;
+                font-size: 13px;
+            }
+            QPushButton:hover {
+                background-color: #483A6A;
+            }
+            QPushButton:pressed {
+                background-color: #372A54;
+            }
+        """)
+        self.btn_historical.clicked.connect(self.ejecutar_analisis_historico)
+        layout.addWidget(self.btn_historical)
+        
+        tab.setLayout(layout)
+        self.tab_widget.addTab(tab, "5. Análisis Histórico")
+        
+    def ejecutar_analisis_historico(self):
+        """Ejecutar proceso de análisis histórico"""
+        # Mostrar progreso
+        self.progress_bar.setVisible(True)
+        self.progress_bar.setValue(0)
+        
+        self.log_message("📈 Iniciando análisis histórico...")
+        self.log_message(f"⚙️ Periodo crecimiento anual: {self.dias_crecimiento.value()} días")
+        
+        try:
+            # Importar el procesador
+            from .core.historical_analysis import HistoricalAnalysisProcessor
+            
+            # Crear procesador
+            processor = HistoricalAnalysisProcessor(
+                progress_callback=self.update_progress,
+                log_callback=self.log_message
+            )
+            
+            # Ejecutar análisis histórico
+            resultado = processor.ejecutar_analisis_historico_completo(
+                dias_crecimiento_anual=self.dias_crecimiento.value()
+            )
+            
+            if resultado['success']:
+                self.log_message("🎉 ¡Análisis histórico completado exitosamente!")
+                
+                # Mostrar resumen de intervenciones
+                resultado_interv = resultado.get('resultado_intervencion', {})
+                self.log_message(f"📅 Análisis de intervenciones:")
+                self.log_message(f"  • Registros con intervención: {resultado_interv.get('registros_actualizados', 0)}")
+                self.log_message(f"  • Registros sin intervención previa: {resultado_interv.get('registros_sin_intervencion', 0)}")
+                
+                # Mostrar resumen de crecimiento
+                resultado_crec = resultado.get('resultado_crecimiento', {})
+                self.log_message(f"📏 Análisis de crecimiento anual:")
+                self.log_message(f"  • Registros con crecimiento calculado: {resultado_crec.get('registros_actualizados', 0)}")
+                self.log_message(f"  • Registros sin datos suficientes: {resultado_crec.get('registros_sin_datos', 0)}")
+                
+                self.log_message(f"🔄 Total de registros procesados: {resultado.get('registros_totales', 0)}")
+                self.save_settings()
+            else:
+                self.log_message(f"❌ Error: {resultado['message']}")
+                if 'details' in resultado:
+                    self.log_message("📋 Ver detalles del error arriba")
+                
+        except ImportError as e:
+            self.log_message(f"❌ Error de importación: {e}")
+            self.log_message("ℹ️ Asegúrese de que el archivo historical_analysis.py exista en la carpeta core/")
         except Exception as e:
             self.log_message(f"❌ Error inesperado: {e}")
         finally:

@@ -22,5 +22,21 @@
 """
 
 # Core processing modules for Canchas Las Tortolas
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 __author__ = "Linkapsis"
+
+# Core modules
+from . import validation
+from . import processing
+from . import table_creation
+from . import volume_screenshot
+from . import xml_export
+from . import pdf_reports
+from . import data_merge  # Module for data merge functionality
+from . import historical_analysis  # Module for historical data analysis
+from . import bar_charts  # Module for generating bar charts
+from . import bar_charts_new  # New module for generating bar charts (fixed version)
+from . import bar_charts_simple  # Simple module based on working script
+from . import time_series_charts  # Module for generating time series charts
+from . import heatmap_screenshots  # Module for generating heatmap screenshots
+from . import espesor_classification  # Module for espesor thickness classification

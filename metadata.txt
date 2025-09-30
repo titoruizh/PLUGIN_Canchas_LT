@@ -2,7 +2,7 @@
 name=Canchas Las Tortolas
 qgisMinimumVersion=3.0
 description=Plugin para procesamiento topográfico de canchas Las Tortolas
-version=1.0.0
+version=1.1.0
 author=titoruizh
 email=titoruizh@example.com
 

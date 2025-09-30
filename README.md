@@ -1,7 +1,7 @@
 # 🏟️ Canchas Las Tortolas - Plugin QGIS Profesional
 
 [![QGIS Version](https://img.shields.io/badge/QGIS-3.28%2B-brightgreen.svg)](https://qgis.org)
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/titoruizh/PLUGIN_Canchas_LT)
+[![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)](https://github.com/titoruizh/PLUGIN_Canchas_LT)
 [![License](https://img.shields.io/badge/license-GPL--2.0-orange.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.7%2B-blue.svg)](https://python.org)
 [![PyQt5](https://img.shields.io/badge/PyQt5-5.15%2B-green.svg)](https://pypi.org/project/PyQt5/)
@@ -193,10 +193,11 @@ La interface está organizada en **4 pestañas principales**:
 - **3.2** �📸 Volúmenes y Pantallazos: Cálculos Cut/Fill incrementales con generación automática de imágenes de diferencias DEM
 - **3.3** 🗂️ XML: Exportación formato LandXML
 
-#### **📄 Pestaña 4: Reportes**
-- Generación de reportes PDF
-- Configuración de layout
-- Exportación de documentación
+#### **📄 Pestaña 4: Datos Reporte**
+- Fusión de datos para reportes manuales
+- Normalización de fechas en tablas
+- Integración con datos históricos
+- Preparación de datos para compositor de QGIS
 
 ### **Pasos de Configuración**
 
@@ -591,6 +592,17 @@ pip install reportlab>=3.6.0
 **Prioridad**: Alta/Media/Baja
 ```
 
+### **🔄 Actualización de Reportes (v1.1.0)**
+
+En la versión 1.1.0, se ha modificado el flujo de trabajo para la generación de reportes:
+
+- 🆕 **Nuevo enfoque**: Generación de datos auxiliares para creación manual de reportes
+- 📊 **Fusión de datos**: Datos de "Tabla Base Datos" se copian a "DATOS HISTORICOS"
+- 📝 **Creación manual**: Los reportes ahora se crean en el compositor de QGIS
+- 🔀 **Integración mejorada**: Mayor flexibilidad en diseño de reportes
+  
+Ver más detalles en el archivo `cambios_reportes.md`.
+
 ### **🔧 Guía de Contribución**
 
 ```bash
@@ -670,6 +682,10 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 | Versión | Fecha | Características Principales |
 |---------|--------|----------------------------|
+| **1.1.0** | Septiembre 2025 | 🔄 Rediseño de módulo de reportes |
+| | | 📊 Fusión de datos para reportes manuales |
+| | | 🔀 Integración de datos históricos |
+| | | 📝 Mejor flujo de trabajo para reportes |
 | **1.0.0** | Agosto 2025 | 🚀 Lanzamiento inicial completo |
 | | | ✅ Validación espacial automatizada |
 | | | 🔄 Procesamiento visual inteligente |
