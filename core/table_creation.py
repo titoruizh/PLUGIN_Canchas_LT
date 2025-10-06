@@ -61,20 +61,28 @@ class TableCreationProcessor:
     def parsear_nombre_archivo(self, nombre):
         """
         Parsea el nombre del archivo y extrae metadata relevante.
-        Espera nombres del tipo: fecha_muro_sector_relleno
+        Espera nombres del tipo: fecha_muro_sector_relleno[_componentes_adicionales]
+        Maneja nombres con 4 o más componentes, combinando los extras en el relleno.
         """
         try:
             parts = nombre.split("_")
-            if len(parts) != 4:
-                raise ValueError("Formato de nombre incorrecto")
+            if len(parts) < 4:
+                raise ValueError("Formato de nombre incorrecto - faltan componentes")
+            
             fecha_raw = parts[0]
             fecha = f"{fecha_raw[4:6]}-{fecha_raw[2:4]}-20{fecha_raw[0:2]}"
-            muro_raw = parts[1]
+            muro_raw = parts[1].upper()  # Convertir a mayúsculas
             muro_dict = {"MP": "Principal", "ME": "Este", "MO": "Oeste"}
             muro = muro_dict.get(muro_raw, muro_raw)
             sector_raw = parts[2]
             sector = f"SECTOR {sector_raw[1:]}"
-            relleno = parts[3]
+            
+            # Si hay más de 4 componentes, combinar los restantes como relleno
+            if len(parts) > 4:
+                relleno = "_".join(parts[3:])  # Combinar todos los componentes restantes
+            else:
+                relleno = parts[3]
+            
             return {
                 "Protocolo Topografico": "",
                 "Fecha": fecha,
@@ -451,7 +459,7 @@ class TableCreationProcessor:
 
                 # Buscar DEM correspondiente
                 datos_nombre = self.parsear_nombre_archivo(base)
-                muro_code = datos_nombre["Muro_Code"]
+                muro_code = datos_nombre["Muro_Code"].upper()  # Convertir a mayúsculas
                 dem_name = dem_map.get(muro_code)
                 tin_base = None
                 if dem_name:

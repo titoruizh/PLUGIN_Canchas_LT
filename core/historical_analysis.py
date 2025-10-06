@@ -6,7 +6,7 @@ para el plugin de Canchas Las Tortolas
 
 from datetime import datetime, timedelta
 from qgis.core import (
-    QgsProject, QgsVectorLayer, QgsFeature, edit, QgsField
+    QgsProject, QgsVectorLayer, QgsFeature, edit, QgsField, QgsFeatureRequest
 )
 from PyQt5.QtCore import QVariant
 
@@ -116,7 +116,13 @@ class HistoricalAnalysisProcessor:
             registros_actualizados = 0
             registros_sin_intervencion = 0
             
-            with edit(tabla_base):
+            # Verificar si la capa está en modo de edición, si no, activarlo
+            editing_started = False
+            if not tabla_base.isEditable():
+                tabla_base.startEditing()
+                editing_started = True
+            
+            try:
                 for i, f_base in enumerate(tabla_base.getFeatures()):
                     # Actualizar progreso
                     progreso = int(50 * (i+1) / registros_totales)
@@ -175,6 +181,11 @@ class HistoricalAnalysisProcessor:
                     except Exception as e:
                         self.log_message(f"⚠️ Error en registro {f_base.id()}: {e}")
             
+            finally:
+                # Confirmar cambios y salir del modo de edición si lo iniciamos
+                if editing_started:
+                    tabla_base.commitChanges()
+            
             self.log_message(f"✅ Cálculo de últimas intervenciones completado:")
             self.log_message(f"  • {registros_actualizados} registros con última intervención")
             self.log_message(f"  • {registros_sin_intervencion} registros sin intervenciones previas")
@@ -231,7 +242,13 @@ class HistoricalAnalysisProcessor:
             registros_actualizados = 0
             registros_sin_datos = 0
             
-            with edit(tabla_base):
+            # Verificar si la capa está en modo de edición, si no, activarlo
+            editing_started_crecimiento = False
+            if not tabla_base.isEditable():
+                tabla_base.startEditing()
+                editing_started_crecimiento = True
+            
+            try:
                 for i, f_base in enumerate(tabla_base.getFeatures()):
                     # Actualizar progreso
                     progreso = int(50 + 50 * (i+1) / registros_totales)
@@ -289,6 +306,11 @@ class HistoricalAnalysisProcessor:
                     except Exception as e:
                         self.log_message(f"⚠️ Error en registro {f_base.id()}: {e}")
             
+            finally:
+                # Confirmar cambios y salir del modo de edición si lo iniciamos
+                if editing_started_crecimiento:
+                    tabla_base.commitChanges()
+            
             self.log_message(f"✅ Cálculo de crecimiento anual completado:")
             self.log_message(f"  • {registros_actualizados} registros con crecimiento anual calculado")
             self.log_message(f"  • {registros_sin_datos} registros sin datos suficientes para cálculo")
@@ -303,6 +325,168 @@ class HistoricalAnalysisProcessor:
         except Exception as e:
             import traceback
             error_msg = f"Error durante el cálculo de crecimiento anual: {str(e)}"
+            error_details = traceback.format_exc()
+            self.log_message(f"❌ {error_msg}")
+            self.log_message(f"📋 Detalles del error:\n{error_details}")
+            return {
+                'success': False,
+                'message': error_msg,
+                'details': error_details
+            }
+
+    def calcular_movimientos_tierra_anuales(self, tabla_base, datos_historicos, dias_atras=365):
+        """
+        Calcula movimientos de tierra anuales: neto, relleno acumulado y corte acumulado
+        
+        Args:
+            tabla_base: Capa de la tabla base donde guardar los resultados
+            datos_historicos: Capa de datos históricos para consultar
+            dias_atras: Número de días hacia atrás para el análisis (default 365)
+            
+        Returns:
+            dict: Resultado con éxito/error y detalles
+        """
+        try:
+            self.log_message(f"🔄 Calculando movimientos de tierra anuales ({dias_atras} días)...")
+            
+            # Verificar y crear las columnas si no existen
+            columnas = {
+                "Movimiento Tierra Anual Neto": QVariant.Double,
+                "Relleno Anual Acumulado": QVariant.Double, 
+                "Corte Anual Acumulado": QVariant.Double
+            }
+            self.crear_columnas_si_no_existen(tabla_base, columnas)
+            
+            # Obtener índices de las columnas
+            idx_neto = tabla_base.fields().indexFromName("Movimiento Tierra Anual Neto")
+            idx_relleno = tabla_base.fields().indexFromName("Relleno Anual Acumulado")
+            idx_corte = tabla_base.fields().indexFromName("Corte Anual Acumulado")
+            
+            if idx_neto == -1 or idx_relleno == -1 or idx_corte == -1:
+                return {
+                    'success': False,
+                    'message': 'No se pudieron crear o encontrar las columnas de movimientos de tierra'
+                }
+            
+            # Procesar cada registro de la tabla base
+            registros_totales = tabla_base.featureCount()
+            registros_actualizados = 0
+            registros_sin_datos = 0
+            
+            # Verificar si la capa está en modo de edición, si no, activarlo
+            editing_started_movimientos = False
+            if not tabla_base.isEditable():
+                tabla_base.startEditing()
+                editing_started_movimientos = True
+            
+            try:
+                for i, f_base in enumerate(tabla_base.getFeatures()):
+                    # Actualizar progreso
+                    progreso = int(70 + 30 * (i+1) / registros_totales)
+                    self.progress_callback(progreso, f"Procesando movimientos tierra {i+1}/{registros_totales}")
+                    
+                    try:
+                        # Obtener datos del registro actual
+                        muro = f_base["Muro"]
+                        sector = f_base["Sector"] 
+                        fecha_str = f_base["Fecha"]
+                        
+                        self.log_message(f"🔄 Procesando registro {i+1}/{registros_totales}: {muro}-{sector} ({fecha_str})")
+                        
+                        if not all([muro, sector, fecha_str]):
+                            self.log_message(f"⚠️ Datos incompletos: Muro={muro}, Sector={sector}, Fecha={fecha_str}")
+                            f_base["Movimiento Tierra Anual Neto"] = round(0, 4)
+                            f_base["Relleno Anual Acumulado"] = round(0, 4)
+                            f_base["Corte Anual Acumulado"] = round(0, 4)
+                            tabla_base.updateFeature(f_base)
+                            registros_sin_datos += 1
+                            continue
+                            
+                        # Calcular fecha límite (fecha actual - días_atras)
+                        fecha_final = datetime.strptime(str(fecha_str), "%Y-%m-%d")
+                        fecha_inicio = fecha_final - timedelta(days=dias_atras)
+                        fecha_limite = fecha_inicio.strftime("%Y-%m-%d")
+                        
+                        self.log_message(f"📅 Buscando datos desde {fecha_limite} hasta {fecha_str}")
+                        
+                        # Filtro para buscar registros históricos (escapar comillas simples)
+                        muro_escaped = muro.replace("'", "''") if muro else ''
+                        sector_escaped = sector.replace("'", "''") if sector else ''
+                        filter_expression = f'"Muro" = \'{muro_escaped}\' AND "Sector" = \'{sector_escaped}\' AND "Fecha" >= \'{fecha_limite}\' AND "Fecha" <= \'{fecha_str}\''
+                        
+                        self.log_message(f"🔍 Filtro aplicado: {filter_expression}")
+                        
+                        request = QgsFeatureRequest().setFilterExpression(filter_expression)
+                        features = list(datos_historicos.getFeatures(request))
+                        
+                        if features:
+                            # Calcular sumas de Fill y Cut
+                            suma_fill = 0
+                            suma_cut = 0
+                            
+                            self.log_message(f"🔍 Encontrados {len(features)} registros históricos para {muro}-{sector}")
+                            
+                            for feature in features:
+                                # Obtener valores usando nombres de campo
+                                fill_val = feature["Fill"] if feature["Fill"] is not None else 0
+                                cut_val = feature["Cut"] if feature["Cut"] is not None else 0
+                                
+                                try:
+                                    fill_float = float(fill_val) if fill_val != '' else 0
+                                    cut_float = float(cut_val) if cut_val != '' else 0
+                                    
+                                    suma_fill += fill_float
+                                    suma_cut += cut_float
+                                    
+                                except (ValueError, TypeError) as e:
+                                    self.log_message(f"  ⚠️ Error convertir valores: Fill={fill_val}, Cut={cut_val}")
+                                    continue
+                            
+                            # Calcular movimiento neto (Fill - Cut)
+                            movimiento_neto = suma_fill - suma_cut
+                            
+                            self.log_message(f"📊 Resultados para {muro}-{sector}:")
+                            self.log_message(f"  • Fill total: {suma_fill}")
+                            self.log_message(f"  • Cut total: {suma_cut}")  
+                            self.log_message(f"  • Movimiento neto: {movimiento_neto}")
+                            
+                            # Actualizar los campos con redondeo a 4 decimales
+                            f_base["Movimiento Tierra Anual Neto"] = round(movimiento_neto, 4)
+                            f_base["Relleno Anual Acumulado"] = round(suma_fill, 4)
+                            f_base["Corte Anual Acumulado"] = round(suma_cut, 4)
+                            tabla_base.updateFeature(f_base)
+                            registros_actualizados += 1
+                        else:
+                            self.log_message(f"⚠️ No se encontraron datos históricos para {muro}-{sector} en el período")
+                            self.log_message(f"  • Filtro usado: {filter_expression}")
+                            f_base["Movimiento Tierra Anual Neto"] = round(0, 4)
+                            f_base["Relleno Anual Acumulado"] = round(0, 4)
+                            f_base["Corte Anual Acumulado"] = round(0, 4)
+                            tabla_base.updateFeature(f_base)
+                            registros_sin_datos += 1
+                            
+                    except Exception as e:
+                        self.log_message(f"⚠️ Error en registro movimientos tierra {f_base.id()}: {e}")
+            
+            finally:
+                # Confirmar cambios y salir del modo de edición si lo iniciamos
+                if editing_started_movimientos:
+                    tabla_base.commitChanges()
+            
+            self.log_message(f"✅ Cálculo de movimientos de tierra anuales completado:")
+            self.log_message(f"  • {registros_actualizados} registros con movimientos calculados")
+            self.log_message(f"  • {registros_sin_datos} registros sin datos suficientes")
+            
+            return {
+                'success': True,
+                'message': f'Se actualizaron {registros_actualizados} registros con movimientos de tierra',
+                'registros_actualizados': registros_actualizados,
+                'registros_sin_datos': registros_sin_datos
+            }
+            
+        except Exception as e:
+            import traceback
+            error_msg = f"Error durante el cálculo de movimientos de tierra: {str(e)}"
             error_details = traceback.format_exc()
             self.log_message(f"❌ {error_msg}")
             self.log_message(f"📋 Detalles del error:\n{error_details}")
@@ -380,6 +564,17 @@ class HistoricalAnalysisProcessor:
             if not resultado_crecimiento['success']:
                 return resultado_crecimiento
             
+            # Calcular movimientos de tierra anuales
+            self.progress_callback(70, "Calculando movimientos de tierra anuales...")
+            resultado_movimientos = self.calcular_movimientos_tierra_anuales(
+                tabla_base, 
+                datos_historicos,
+                dias_atras=dias_crecimiento_anual
+            )
+            
+            if not resultado_movimientos['success']:
+                return resultado_movimientos
+
             # Resumir resultados
             self.progress_callback(100, "¡Análisis histórico completado!")
             
@@ -388,6 +583,7 @@ class HistoricalAnalysisProcessor:
                 'message': 'Análisis histórico completado exitosamente',
                 'resultado_intervencion': resultado_intervencion,
                 'resultado_crecimiento': resultado_crecimiento,
+                'resultado_movimientos': resultado_movimientos,
                 'registros_totales': tabla_base.featureCount(),
                 'dias_crecimiento_anual': dias_crecimiento_anual
             }

@@ -67,8 +67,8 @@ class ValidationProcessor:
     # =========================
     
     def limpiar_nombre(self, nombre):
-        """Quita puntos finales, espacios y puntos consecutivos del nombre base."""
-        return re.sub(r'\.+', '.', nombre.strip()).rstrip('.').strip()
+        """Quita puntos finales, espacios y puntos consecutivos del nombre base, y convierte a mayúsculas."""
+        return re.sub(r'\.+', '.', nombre.strip()).rstrip('.').strip().upper()
 
     def actualizar_nombre_archivo(self, nombre_original, nuevo_muro=None, nuevo_sector=None):
         base, ext = os.path.splitext(nombre_original)
@@ -149,6 +149,25 @@ class ValidationProcessor:
         if df is None:
             return None
 
+        # FILTRADO TEMPRANO: Eliminar filas problemáticas ANTES de procesar
+        if not df.empty:
+            # Patrones a filtrar: RTCM, chequeo, inf
+            patrones_filtrar = ['rtcm', 'chequeo', 'inf']
+            
+            # Crear máscara para identificar filas problemáticas
+            mask_problemas = False
+            for patron in patrones_filtrar:
+                # Revisar todas las columnas del DataFrame
+                for col in df.columns:
+                    mask_problemas |= df[col].astype(str).str.lower().str.contains(patron, na=False)
+            
+            filas_originales = len(df)
+            df = df[~mask_problemas].reset_index(drop=True)
+            filas_filtradas = filas_originales - len(df)
+            
+            if filas_filtradas > 0:
+                self.log_callback(f"🧹 Filtradas {filas_filtradas} filas problemáticas (RTCM/inf/chequeo) en archivo")
+
         header_keywords = {"id", "norte", "este", "cota", "desc", "descripcion", "x", "y", "z"}
         primera_fila = df.iloc[0].astype(str).str.lower()
         n_no_num = sum([not val.replace('.', '', 1).isdigit() for val in primera_fila[:4]])
@@ -159,22 +178,95 @@ class ValidationProcessor:
             df = df.iloc[1:].reset_index(drop=True)
 
         df.columns = self.COLUMNAS_REQUERIDAS
-        # Eliminar filas donde la columna 'descripcion' contiene 'inf' (case-insensitive)
-        if not df.empty:
-            df = df[~df['descripcion'].str.lower().str.contains('inf', na=False)].reset_index(drop=True)
-            if df.empty:
-                self.log_callback(f"⚠️ Todas las filas en {path} contenían 'inf' en la columna 'descripcion'. DataFrame vacío.")
         return df
 
     def validar_numeros(self, df):
-        for _, f in df.iterrows():
-            if not (f['norte'].split('.')[0].isdigit() and len(f['norte'].split('.')[0])==7): 
-                return False
-            if not (f['este'].split('.')[0].isdigit() and len(f['este'].split('.')[0])==6): 
-                return False
-            if not (f['cota'].split('.')[0].isdigit() and len(f['cota'].split('.')[0])==3): 
+        """
+        Validación robusta que maneja strings, floats y valores NaN
+        """
+        for idx, f in df.iterrows():
+            try:
+                # Validar Norte
+                norte_val = f['norte']
+                if pd.isna(norte_val):
+                    self.log_callback(f"⚠️ Fila {idx}: Valor 'norte' vacío")
+                    return False
+                norte_str = str(int(float(norte_val))) if isinstance(norte_val, (int, float)) else str(norte_val).split('.')[0]
+                if not (norte_str.isdigit() and len(norte_str) == 7):
+                    self.log_callback(f"⚠️ Fila {idx}: 'norte' inválido: {norte_val} (debe ser 7 dígitos)")
+                    return False
+                
+                # Validar Este
+                este_val = f['este']
+                if pd.isna(este_val):
+                    self.log_callback(f"⚠️ Fila {idx}: Valor 'este' vacío")
+                    return False
+                este_str = str(int(float(este_val))) if isinstance(este_val, (int, float)) else str(este_val).split('.')[0]
+                if not (este_str.isdigit() and len(este_str) == 6):
+                    self.log_callback(f"⚠️ Fila {idx}: 'este' inválido: {este_val} (debe ser 6 dígitos)")
+                    return False
+                
+                # Validar Cota
+                cota_val = f['cota']
+                if pd.isna(cota_val):
+                    self.log_callback(f"⚠️ Fila {idx}: Valor 'cota' vacío")
+                    return False
+                cota_str = str(int(float(cota_val))) if isinstance(cota_val, (int, float)) else str(cota_val).split('.')[0]
+                if not (cota_str.isdigit() and len(cota_str) == 3):
+                    self.log_callback(f"⚠️ Fila {idx}: 'cota' inválida: {cota_val} (debe ser 3 dígitos)")
+                    return False
+                    
+            except Exception as e:
+                self.log_callback(f"⚠️ Error en fila {idx}: {e}")
                 return False
         return True
+
+    def validar_datos_faltantes(self, df, nombre_archivo):
+        """
+        Valida si hay datos faltantes en columnas críticas
+        
+        Args:
+            df: DataFrame a validar
+            nombre_archivo: Nombre del archivo para reportes
+            
+        Returns:
+            list: Lista de errores encontrados
+        """
+        columnas_criticas = ['este', 'norte', 'cota']
+        errores = []
+        
+        for col in columnas_criticas:
+            if col in df.columns:
+                # Contar valores NaN, vacíos o None
+                vacios = df[col].isna().sum()
+                if vacios > 0:
+                    filas_vacias = df[df[col].isna()].index.tolist()
+                    errores.append(f"Columna '{col}': {vacios} valores vacíos en filas {filas_vacias}")
+            else:
+                errores.append(f"Columna '{col}': no existe en el archivo")
+        
+        if errores:
+            self.log_callback(f"❌ ERRORES EN {nombre_archivo}:")
+            for i, error in enumerate(errores, 1):
+                self.log_callback(f"   {i}. {error}")
+        
+        return errores
+
+    def generar_reporte_errores(self, nombre_archivo, errores, tipo_error="Validación"):
+        """
+        Genera un reporte detallado de errores por archivo
+        
+        Args:
+            nombre_archivo: Nombre del archivo con errores
+            errores: Lista de errores
+            tipo_error: Tipo de error para el reporte
+        """
+        if errores:
+            self.log_callback(f"📋 REPORTE DE {tipo_error.upper()} - {nombre_archivo}:")
+            for i, error in enumerate(errores, 1):
+                self.log_callback(f"   {i}. {error}")
+            self.log_callback(f"📊 Total: {len(errores)} problemas encontrados")
+            self.log_callback("")  # Línea en blanco para separar reportes
 
     def invertir_columnas(self, df):
         df = df.copy()
@@ -258,14 +350,26 @@ class ValidationProcessor:
 
     def validar_filas(self, df, archivo, fid, capa):
         comentarios = []
+        
+        # Validación previa de datos faltantes
+        errores_faltantes = self.validar_datos_faltantes(df, archivo)
+        if errores_faltantes:
+            self.generar_reporte_errores(archivo, errores_faltantes, "Datos Faltantes")
+            return {"ok": False, "comentarios": errores_faltantes, 
+                   "coordenadas": df, "muro": None, "sector": None}
+        
+        # Validación de números con manejo robusto
         if not self.validar_numeros(df):
+            # Intentar invertir columnas como solución
             inv = self.invertir_columnas(df)
             if self.validar_numeros(inv):
                 df = inv
                 comentarios.append('Coordenadas invertidas corregidas')
             else:
-                return {"ok":False,"comentarios":["Error en columna Norte"],
-                        "coordenadas":df,"muro":None,"sector":None}
+                error_msg = f"Error en validación numérica para archivo {archivo}"
+                self.log_callback(f"❌ {error_msg}")
+                return {"ok": False, "comentarios": [error_msg],
+                        "coordenadas": df, "muro": None, "sector": None}
         
         f = next(capa.getFeatures(QgsFeatureRequest(fid)))
         muro, sector = f['Muro'], f['Sector']
@@ -555,6 +659,19 @@ class ValidationProcessor:
         self.log_callback("✅ Campos 'NombreArchivo' actualizados sin prefijo")
 
     def procesar_archivos_y_validar(self, capa, carpeta_b):
+        # Estadísticas de procesamiento
+        self.stats_procesamiento = {
+            'total_archivos': 0,
+            'archivos_exitosos': 0,
+            'archivos_con_errores': 0,
+            'errores_por_archivo': {},
+            'archivos_sin_bd': [],
+            'archivos_con_bd': [],
+            'archivos_asc_procesados': [],
+            'archivos_csv_exitosos': [],
+            'archivos_copiados_sin_validar': []
+        }
+        
         idx_v = capa.fields().indexOf(self.COLUMNA_VALIDAR)
         idx_c = capa.fields().indexOf(self.COLUMNA_COMENTARIOS)
         idx_proc = capa.fields().indexOf(self.COLUMNA_PROCESADO)
@@ -580,8 +697,18 @@ class ValidationProcessor:
         capa.startEditing()
         
         archivos_procesados = 0
-        total_archivos = len([f for f in os.listdir(self.DIR_CSV_ORIG) 
-                             if self.limpiar_nombre(os.path.splitext(f)[0]) in feats])
+        # Contar TODOS los archivos en la carpeta origen para estadísticas reales
+        todos_archivos = [f for f in os.listdir(self.DIR_CSV_ORIG) 
+                         if f.lower().endswith(('.csv', '.xlsx', '.xls', '.asc'))]
+        archivos_en_bd = [f for f in todos_archivos 
+                         if self.limpiar_nombre(os.path.splitext(f)[0]) in feats]
+        archivos_sin_bd = [f for f in todos_archivos 
+                          if self.limpiar_nombre(os.path.splitext(f)[0]) not in feats]
+        
+        # Inicializar estadísticas con números reales
+        self.stats_procesamiento['total_archivos'] = len(todos_archivos)
+        self.stats_procesamiento['archivos_con_bd'] = archivos_en_bd
+        self.stats_procesamiento['archivos_sin_bd'] = archivos_sin_bd
 
         for arc in os.listdir(self.DIR_CSV_ORIG):
             base, ext = os.path.splitext(arc)
@@ -595,7 +722,7 @@ class ValidationProcessor:
             
             # Actualizar progreso
             archivos_procesados += 1
-            progreso_archivo = 50 + int((archivos_procesados / total_archivos) * 30)
+            progreso_archivo = 50 + int((archivos_procesados / self.stats_procesamiento['total_archivos']) * 30)
             self.progress_callback(progreso_archivo, f"Procesando {arc}...")
 
             if ext.lower() == '.asc':
@@ -603,6 +730,7 @@ class ValidationProcessor:
                     capa, fid, arc, ruta_archivo, carpeta_b, idx_v, idx_c, idx_proc,
                     capa_muros=capa_muros, capa_sectores=capa_sectores, DEMS=DEMS, tolerancia_cota=20
                 )
+                self.stats_procesamiento['archivos_asc_procesados'].append(arc)
                 continue
 
             df = self.leer_archivo_flexible(ruta_archivo)
@@ -618,11 +746,25 @@ class ValidationProcessor:
             else:
                 ruta_csv = ruta_archivo
 
-            res = self.validar_filas(df, arc, fid, capa)
-            ok, coms = res["ok"], ";".join(res["comentarios"])
-            df_corr = res["coordenadas"]
-            if not ok:
-                self.marcar_csv_invalido(capa, fid, arc, idx_v, idx_c, idx_proc, coms)
+            try:
+                res = self.validar_filas(df, arc, fid, capa)
+                ok, coms = res["ok"], ";".join(res["comentarios"])
+                df_corr = res["coordenadas"]
+                if not ok:
+                    self.marcar_csv_invalido(capa, fid, arc, idx_v, idx_c, idx_proc, coms)
+                    self.log_callback(f"⚠️ Archivo {arc} marcado como inválido: {coms}")
+                    self.stats_procesamiento['archivos_con_errores'] += 1
+                    self.stats_procesamiento['errores_por_archivo'][arc] = coms
+                    continue
+                else:
+                    self.stats_procesamiento['archivos_exitosos'] += 1
+                    self.stats_procesamiento['archivos_csv_exitosos'].append(arc)
+            except Exception as e:
+                error_msg = f"Error en validación de {arc}: {str(e)}"
+                self.log_callback(f"❌ {error_msg}")
+                self.marcar_csv_invalido(capa, fid, arc, idx_v, idx_c, idx_proc, error_msg)
+                self.stats_procesamiento['archivos_con_errores'] += 1
+                self.stats_procesamiento['errores_por_archivo'][arc] = error_msg
                 continue
 
             capa_puntos = self.csv_a_capa_puntos(df_corr, nombre=f"pts_{arc}")
@@ -684,7 +826,42 @@ class ValidationProcessor:
                             self.log_callback(f"✅ Archivo renombrado: {fname} -> {fname_limpio}")
 
         capa.commitChanges()
+        
+        # Generar reporte final de estadísticas
+        self.generar_reporte_detallado()
+        
         self.log_callback("\n✅ Proceso GIS completado con validación espacial, backup y corrección de nombres.")
+
+    def generar_reporte_final(self):
+        """Genera un reporte final con estadísticas del procesamiento"""
+        stats = self.stats_procesamiento
+        self.log_callback("\n" + "="*60)
+        self.log_callback("📊 REPORTE FINAL DE PROCESAMIENTO")
+        self.log_callback("="*60)
+        self.log_callback(f"� Total de archivos encontrados: {stats['total_archivos']}")
+        self.log_callback(f"📋 Archivos con registro en BD: {stats.get('archivos_en_bd', 0)}")
+        self.log_callback(f"📝 Archivos sin registro en BD: {stats.get('archivos_sin_bd', 0)}")
+        self.log_callback(f"✅ Archivos procesados exitosamente: {stats['archivos_exitosos']}")
+        self.log_callback(f"❌ Archivos con errores: {stats['archivos_con_errores']}")
+        
+        # Calcular archivos copiados pero no validados
+        archivos_copiados = stats['archivos_exitosos'] + stats['archivos_con_errores']
+        if archivos_copiados < stats['total_archivos']:
+            no_procesados = stats['total_archivos'] - archivos_copiados
+            self.log_callback(f"📋 Archivos copiados sin validar: {no_procesados}")
+        
+        if stats['errores_por_archivo']:
+            self.log_callback("\n🔍 DETALLE DE ERRORES POR ARCHIVO:")
+            for archivo, error in stats['errores_por_archivo'].items():
+                self.log_callback(f"   📁 {archivo}: {error}")
+        
+        # Porcentaje de éxito sobre archivos que intentaron validarse
+        archivos_intentados = stats['archivos_exitosos'] + stats['archivos_con_errores']
+        if archivos_intentados > 0:
+            porcentaje_exito = (stats['archivos_exitosos'] / archivos_intentados * 100)
+            self.log_callback(f"\n📈 Tasa de éxito en validación: {porcentaje_exito:.1f}%")
+        
+        self.log_callback("="*60)
 
     def limpiar_archivos_auxiliares(self):
         if os.path.exists(self.DIR_CSV_PROC):
@@ -696,6 +873,245 @@ class ValidationProcessor:
                         self.log_callback(f"🧹 Archivo auxiliar eliminado: {aux_path}")
                     except Exception as e:
                         self.log_callback(f"⚠️ No se pudo eliminar {aux_path}: {e}")
+
+    def normalizar_nombres_y_validar_nomenclatura(self, capa):
+        """
+        Normaliza nombres de archivos a mayúsculas y valida nomenclatura con GPKG
+        """
+        self.log_callback("🔄 Iniciando normalización de nombres y validación de nomenclatura...")
+        
+        # 1. Normalizar nombres de archivos a MAYÚSCULAS
+        self.normalizar_nombres_archivos()
+        
+        # 2. Actualizar campos del GPKG para que coincidan con archivos normalizados
+        self.actualizar_campos_gpkg_mayusculas(capa)
+        
+        # 3. Validar nomenclatura con datos del GPKG
+        self.validar_nomenclatura_con_gpkg(capa)
+    
+    def normalizar_nombres_archivos(self):
+        """Convierte todos los nombres de archivos a MAYÚSCULAS"""
+        carpetas = [self.DIR_CSV_ORIG, self.DIR_IMG_ORIG]
+        total_renombrados = 0
+        
+        for carpeta in carpetas:
+            if not os.path.exists(carpeta):
+                continue
+                
+            self.log_callback(f"📁 Normalizando nombres en: {carpeta}")
+            
+            for archivo in os.listdir(carpeta):
+                ruta_actual = os.path.join(carpeta, archivo)
+                if os.path.isfile(ruta_actual):
+                    # Separar nombre y extensión
+                    nombre_sin_ext, extension = os.path.splitext(archivo)
+                    nombre_mayuscula = nombre_sin_ext.upper() + extension.lower()
+                    
+                    if archivo != nombre_mayuscula:
+                        ruta_nueva = os.path.join(carpeta, nombre_mayuscula)
+                        try:
+                            os.rename(ruta_actual, ruta_nueva)
+                            self.log_callback(f"   ✅ Renombrado: {archivo} → {nombre_mayuscula}")
+                            total_renombrados += 1
+                        except Exception as e:
+                            self.log_callback(f"   ❌ Error renombrando {archivo}: {e}")
+        
+        self.log_callback(f"📊 Total archivos renombrados: {total_renombrados}")
+    
+    def actualizar_campos_gpkg_mayusculas(self, capa):
+        """Actualiza los campos del GPKG para que coincidan con archivos normalizados"""
+        self.log_callback("🔄 Actualizando campos del GPKG a mayúsculas...")
+        
+        capa.startEditing()
+        total_actualizados = 0
+        
+        try:
+            for feature in capa.getFeatures():
+                fid = feature.id()
+                cambios_realizados = False
+                
+                # Actualizar campo Muro a mayúsculas
+                muro_actual = feature.get("Muro", "")
+                if muro_actual and str(muro_actual) != str(muro_actual).upper():
+                    idx_muro = capa.fields().indexOf("Muro")
+                    if idx_muro >= 0:
+                        capa.changeAttributeValue(fid, idx_muro, str(muro_actual).upper())
+                        cambios_realizados = True
+                
+                # Actualizar campo Sector a mayúsculas
+                sector_actual = feature.get("Sector", "")
+                if sector_actual and str(sector_actual) != str(sector_actual).upper():
+                    idx_sector = capa.fields().indexOf("Sector")
+                    if idx_sector >= 0:
+                        capa.changeAttributeValue(fid, idx_sector, str(sector_actual).upper())
+                        cambios_realizados = True
+                
+                # Actualizar campo Relleno a mayúsculas
+                relleno_actual = feature.get("Relleno", "")
+                if relleno_actual and str(relleno_actual) != str(relleno_actual).upper():
+                    idx_relleno = capa.fields().indexOf("Relleno")
+                    if idx_relleno >= 0:
+                        capa.changeAttributeValue(fid, idx_relleno, str(relleno_actual).upper())
+                        cambios_realizados = True
+                
+                # Actualizar NombreArchivo a mayúsculas (solo el nombre, no la ruta)
+                nombre_archivo = feature.get("NombreArchivo", "")
+                if nombre_archivo:
+                    nombre_normalizado = self.normalizar_nombre_campo(nombre_archivo)
+                    if nombre_archivo != nombre_normalizado:
+                        idx_nombre = capa.fields().indexOf("NombreArchivo")
+                        if idx_nombre >= 0:
+                            capa.changeAttributeValue(fid, idx_nombre, nombre_normalizado)
+                            cambios_realizados = True
+                
+                # Actualizar Foto a mayúsculas (solo el nombre, no la ruta)
+                foto = feature.get("Foto", "")
+                if foto:
+                    foto_normalizada = self.normalizar_nombre_campo(foto)
+                    if foto != foto_normalizada:
+                        idx_foto = capa.fields().indexOf("Foto")
+                        if idx_foto >= 0:
+                            capa.changeAttributeValue(fid, idx_foto, foto_normalizada)
+                            cambios_realizados = True
+                
+                if cambios_realizados:
+                    total_actualizados += 1
+            
+            capa.commitChanges()
+            self.log_callback(f"✅ Campos del GPKG actualizados: {total_actualizados} registros")
+            
+        except Exception as e:
+            capa.rollBack()
+            self.log_callback(f"❌ Error actualizando campos del GPKG: {e}")
+    
+    def normalizar_nombre_campo(self, nombre_campo):
+        """Normaliza un campo de nombre (archivo o foto) manteniendo estructura de carpetas"""
+        if not nombre_campo:
+            return nombre_campo
+            
+        # Si tiene ruta, separar directorio y archivo
+        if "/" in nombre_campo or "\\" in nombre_campo:
+            partes = nombre_campo.replace("\\", "/").split("/")
+            nombre_archivo = partes[-1]  # Último elemento es el archivo
+            ruta_carpetas = "/".join(partes[:-1])  # Todo excepto el último
+            
+            # Normalizar solo el nombre del archivo
+            if "." in nombre_archivo:
+                nombre_sin_ext, extension = nombre_archivo.rsplit(".", 1)
+                nombre_normalizado = nombre_sin_ext.upper() + "." + extension.lower()
+            else:
+                nombre_normalizado = nombre_archivo.upper()
+            
+            return ruta_carpetas + "/" + nombre_normalizado
+        else:
+            # Solo nombre de archivo, sin ruta
+            if "." in nombre_campo:
+                nombre_sin_ext, extension = nombre_campo.rsplit(".", 1)
+                return nombre_sin_ext.upper() + "." + extension.lower()
+            else:
+                return nombre_campo.upper()
+    
+    def validar_nomenclatura_con_gpkg(self, capa):
+        """Valida que la nomenclatura de archivos coincida con datos del GPKG"""
+        self.log_callback("🔍 Validando nomenclatura con datos del GPKG...")
+        
+        errores_nomenclatura = []
+        coincidencias = 0
+        
+        for feature in capa.getFeatures():
+            try:
+                # Obtener datos del GPKG
+                fecha_gpkg = feature.get("Fecha", "")
+                muro_gpkg = feature.get("Muro", "")
+                sector_gpkg = feature.get("Sector", "")
+                relleno_gpkg = feature.get("Relleno", "")
+                archivo_csv = feature.get("NombreArchivo", "")
+                archivo_foto = feature.get("Foto", "")
+                
+                if not all([fecha_gpkg, muro_gpkg, sector_gpkg, relleno_gpkg]):
+                    continue
+                
+                # Construir nombre esperado desde GPKG (convertir todo a mayúsculas)
+                fecha_formato = self.extraer_fecha_formato(str(fecha_gpkg))
+                if not fecha_formato:
+                    continue
+                    
+                nombre_esperado = f"{fecha_formato}_{str(muro_gpkg).upper()}_{str(sector_gpkg).upper()}_{str(relleno_gpkg).upper()}"
+                
+                # Validar archivo CSV
+                if archivo_csv:
+                    nombre_csv_limpio = self.extraer_nombre_archivo(archivo_csv)
+                    if nombre_csv_limpio != nombre_esperado:
+                        errores_nomenclatura.append({
+                            'tipo': 'CSV',
+                            'archivo': archivo_csv,
+                            'esperado': nombre_esperado,
+                            'encontrado': nombre_csv_limpio,
+                            'gpkg_data': f"Fecha:{fecha_gpkg}, Muro:{str(muro_gpkg).upper()}, Sector:{str(sector_gpkg).upper()}, Relleno:{str(relleno_gpkg).upper()}"
+                        })
+                    else:
+                        coincidencias += 1
+                
+                # Validar archivo FOTO
+                if archivo_foto:
+                    nombre_foto_limpio = self.extraer_nombre_archivo(archivo_foto)
+                    if nombre_foto_limpio != nombre_esperado:
+                        errores_nomenclatura.append({
+                            'tipo': 'FOTO',
+                            'archivo': archivo_foto,
+                            'esperado': nombre_esperado,
+                            'encontrado': nombre_foto_limpio,
+                            'gpkg_data': f"Fecha:{fecha_gpkg}, Muro:{str(muro_gpkg).upper()}, Sector:{str(sector_gpkg).upper()}, Relleno:{str(relleno_gpkg).upper()}"
+                        })
+                    else:
+                        coincidencias += 1
+                        
+            except Exception as e:
+                self.log_callback(f"⚠️ Error validando feature {feature.id()}: {e}")
+        
+        # Reportar resultados
+        self.log_callback(f"📊 Resultado validación nomenclatura:")
+        self.log_callback(f"   ✅ Coincidencias: {coincidencias}")
+        self.log_callback(f"   ❌ Errores: {len(errores_nomenclatura)}")
+        
+        if errores_nomenclatura:
+            self.log_callback(f"\n🔍 ERRORES DE NOMENCLATURA:")
+            for error in errores_nomenclatura[:10]:  # Mostrar solo los primeros 10
+                self.log_callback(f"   📁 {error['tipo']}: {error['archivo']}")
+                self.log_callback(f"      Esperado: {error['esperado']}")
+                self.log_callback(f"      Encontrado: {error['encontrado']}")
+                self.log_callback(f"      Datos GPKG: {error['gpkg_data']}")
+                self.log_callback("")
+            if len(errores_nomenclatura) > 10:
+                self.log_callback(f"   ... y {len(errores_nomenclatura) - 10} errores más")
+    
+    def extraer_fecha_formato(self, fecha_str):
+        """Extrae fecha en formato YYMMDD desde string de fecha"""
+        try:
+            from datetime import datetime
+            # Intentar varios formatos de fecha
+            formatos = ["%Y-%m-%d", "%d-%m-%Y", "%Y/%m/%d", "%d/%m/%Y"]
+            
+            for formato in formatos:
+                try:
+                    fecha_dt = datetime.strptime(fecha_str.split(' ')[0], formato)  # Solo la parte de fecha
+                    return fecha_dt.strftime("%y%m%d")  # Formato YYMMDD
+                except ValueError:
+                    continue
+            return None
+        except Exception:
+            return None
+    
+    def extraer_nombre_archivo(self, ruta_archivo):
+        """Extrae el nombre del archivo sin ruta y sin extensión"""
+        try:
+            # Remover ruta (tanto / como \)
+            nombre_con_ext = os.path.basename(ruta_archivo)
+            # Remover extensión
+            nombre_sin_ext = os.path.splitext(nombre_con_ext)[0]
+            return nombre_sin_ext.upper()
+        except Exception:
+            return ""
 
     # =========================
     # MÉTODO PRINCIPAL
@@ -723,6 +1139,10 @@ class ValidationProcessor:
             if not layer.isValid():
                 raise Exception(f"No se pudo cargar la capa desde {self.TMP_GPKG}")
             
+            # Normalizar nombres a mayúsculas y validar nomenclatura
+            self.progress_callback(25, "Normalizando nombres y validando nomenclatura...")
+            self.normalizar_nombres_y_validar_nomenclatura(layer)
+            
             # Agregar al proyecto si no existe
             project = QgsProject.instance()
             if not any(lyr.name() == self.NOMBRE_CAPA for lyr in project.mapLayers().values()):
@@ -732,11 +1152,11 @@ class ValidationProcessor:
                 self.log_callback(f"ℹ️ Capa '{self.NOMBRE_CAPA}' ya está cargada")
             
             # Backup completo
-            self.progress_callback(30, "Creando backup completo...")
+            self.progress_callback(35, "Creando backup completo...")
             carpeta_b = self.respaldo_completo()
             
             # Actualizar nombres
-            self.progress_callback(40, "Actualizando nombres de archivos...")
+            self.progress_callback(45, "Actualizando nombres de archivos...")
             self.actualizar_nombres_capa(layer)
             
             # Procesar y validar archivos (progreso 50-80 dentro del método)
@@ -767,3 +1187,77 @@ class ValidationProcessor:
                 'message': error_msg,
                 'details': error_details
             }
+
+    def generar_reporte_detallado(self):
+        """Genera un reporte final con estadísticas detalladas del procesamiento"""
+        stats = self.stats_procesamiento
+        self.log_callback("\n" + "="*70)
+        self.log_callback("📊 REPORTE FINAL DETALLADO DE PROCESAMIENTO")
+        self.log_callback("="*70)
+        
+        # Resumen general
+        self.log_callback(f"📁 Total de archivos encontrados: {stats['total_archivos']}")
+        self.log_callback(f"📋 Archivos con registro en BD: {len(stats['archivos_con_bd'])}")
+        self.log_callback(f"📝 Archivos sin registro en BD: {len(stats['archivos_sin_bd'])}")
+        
+        # Detalles de archivos sin registro en BD
+        if stats['archivos_sin_bd']:
+            self.log_callback(f"\n🔍 ARCHIVOS SIN REGISTRO EN BD ({len(stats['archivos_sin_bd'])}):")
+            for archivo in stats['archivos_sin_bd']:
+                self.log_callback(f"   📄 {archivo}")
+        
+        # Resultados de procesamiento
+        self.log_callback(f"\n📊 RESULTADOS DE PROCESAMIENTO:")
+        self.log_callback(f"✅ Archivos CSV procesados exitosamente: {stats['archivos_exitosos']}")
+        self.log_callback(f"🗂️ Archivos ASC procesados: {len(stats['archivos_asc_procesados'])}")
+        self.log_callback(f"❌ Archivos con errores: {stats['archivos_con_errores']}")
+        
+        # Lista de archivos exitosos (primeros 10)
+        if stats.get('archivos_csv_exitosos'):
+            self.log_callback(f"\n✅ ARCHIVOS CSV EXITOSOS ({len(stats['archivos_csv_exitosos'])}):")
+            for archivo in stats['archivos_csv_exitosos'][:10]:
+                self.log_callback(f"   📄 {archivo}")
+            if len(stats['archivos_csv_exitosos']) > 10:
+                self.log_callback(f"   ... y {len(stats['archivos_csv_exitosos']) - 10} más")
+        
+        # Lista de archivos ASC (primeros 10)
+        if stats['archivos_asc_procesados']:
+            self.log_callback(f"\n🗂️ ARCHIVOS ASC PROCESADOS ({len(stats['archivos_asc_procesados'])}):")
+            for archivo in stats['archivos_asc_procesados'][:10]:
+                self.log_callback(f"   📄 {archivo}")
+            if len(stats['archivos_asc_procesados']) > 10:
+                self.log_callback(f"   ... y {len(stats['archivos_asc_procesados']) - 10} más")
+        
+        # Detalles de errores
+        if stats['errores_por_archivo']:
+            self.log_callback(f"\n❌ DETALLE DE ERRORES ({len(stats['errores_por_archivo'])}):")
+            for archivo, error in stats['errores_por_archivo'].items():
+                self.log_callback(f"   📁 {archivo}:")
+                self.log_callback(f"      {error}")
+        
+        # Verificación de archivos en carpetas de salida
+        try:
+            archivos_csv_salida = len([f for f in os.listdir(self.DIR_CSV_PROC) if f.lower().endswith(('.csv', '.asc'))])
+            archivos_img_salida = len([f for f in os.listdir(self.DIR_IMG_PROC) if f.lower().endswith('.jpg')])
+            self.log_callback(f"\n📂 VERIFICACIÓN CARPETAS DE SALIDA:")
+            self.log_callback(f"🗃️ Archivos en CSV-ASC: {archivos_csv_salida}")
+            self.log_callback(f"🖼️ Archivos en IMAGENES: {archivos_img_salida}")
+        except Exception as e:
+            self.log_callback(f"⚠️ No se pudo verificar carpetas de salida: {e}")
+        
+        # Explicación de términos
+        self.log_callback(f"\n📖 EXPLICACIÓN DE TÉRMINOS:")
+        self.log_callback(f"   • Archivos con registro en BD: Tienen entrada en la base de datos QGIS")
+        self.log_callback(f"   • Archivos sin registro en BD: No tienen entrada en BD, se copian pero no validan")
+        self.log_callback(f"   • CSV procesados exitosamente: Pasaron todas las validaciones")
+        self.log_callback(f"   • ASC procesados: Archivos de superficie procesados automáticamente")
+        
+        # Porcentajes de éxito
+        archivos_intentados = stats['archivos_exitosos'] + stats['archivos_con_errores']
+        if archivos_intentados > 0:
+            porcentaje_exito = (stats['archivos_exitosos'] / archivos_intentados * 100)
+            self.log_callback(f"\n📈 ESTADÍSTICAS FINALES:")
+            self.log_callback(f"   Tasa de éxito en validación CSV: {porcentaje_exito:.1f}%")
+            self.log_callback(f"   Total procesados (CSV+ASC): {archivos_intentados + len(stats['archivos_asc_procesados'])}")
+        
+        self.log_callback("="*70)

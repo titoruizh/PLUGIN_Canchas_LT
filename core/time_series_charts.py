@@ -266,7 +266,7 @@ class TimeSeriesChartGenerator:
             plt.axhline(0, color="gray", linestyle="--", linewidth=2)
             
             # títulos y estilo con fuentes más grandes para mejor legibilidad en PDFs - TODO EN MAYÚSCULAS
-            plt.title(f"ESPESOR A TRAVÉS DEL TIEMPO - {muro.upper()} {sector.upper()}", fontsize=24, fontweight='bold', pad=20)
+            plt.title(f"SERIE ANUAL DEL ESPESOR - MURO {muro.upper()} {sector.upper()}", fontsize=24, fontweight='bold', pad=20)
             plt.xlabel("FECHA", fontsize=20, fontweight='bold')
             plt.ylabel("ESPESOR", fontsize=20, fontweight='bold')
             

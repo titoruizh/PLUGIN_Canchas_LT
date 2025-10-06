@@ -105,7 +105,13 @@ class DataMergeProcessor:
             registros_procesados = 0
             errores = 0
             
-            with edit(layer):
+            # Verificar si la capa está en modo de edición, si no, activarlo
+            editing_started = False
+            if not layer.isEditable():
+                layer.startEditing()
+                editing_started = True
+            
+            try:
                 for f in layer.getFeatures():
                     valor = f["Fecha"]
                     if not valor or str(valor).strip() == "":
@@ -118,6 +124,11 @@ class DataMergeProcessor:
                     except Exception as e:
                         self.log_message(f"⚠️ Error en registro {f.id()} con valor '{valor}': {e}")
                         errores += 1
+            
+            finally:
+                # Confirmar cambios y salir del modo de edición si lo iniciamos
+                if editing_started:
+                    layer.commitChanges()
             
             self.log_message(f"✅ Normalización de fechas completada: {registros_procesados} registros procesados, {errores} errores")
             return registros_procesados > 0
@@ -212,8 +223,14 @@ class DataMergeProcessor:
             
             self.log_message(f"ℹ️ Se encontraron {len(mapa_campos)} campos coincidentes entre las tablas")
             
-            # Copiar registros
-            with edit(tabla_historicos):
+            # Verificar si la capa está en modo de edición, si no, activarlo
+            editing_started_copy = False
+            if not tabla_historicos.isEditable():
+                tabla_historicos.startEditing()
+                editing_started_copy = True
+            
+            try:
+                # Copiar registros
                 for f_base in tabla_base.getFeatures():
                     new_f = QgsFeature(tabla_historicos.fields())
                     
@@ -223,6 +240,11 @@ class DataMergeProcessor:
                     
                     tabla_historicos.addFeature(new_f)
                     registros_copiados += 1
+            
+            finally:
+                # Confirmar cambios y salir del modo de edición si lo iniciamos
+                if editing_started_copy:
+                    tabla_historicos.commitChanges()
             
             # Registrar los IDs después para calcular nuevos registros
             ids_despues = set()

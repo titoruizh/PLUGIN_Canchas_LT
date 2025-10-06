@@ -264,7 +264,7 @@ class SimpleBarChartGenerator:
                 plt.bar(conteos.index, conteos.values, color="skyblue")
                 
                 # Título más simple y fuente más grande - TODO EN MAYÚSCULAS
-                plt.title(f"HISTORICO CANCHAS MURO {muro.upper()}", fontsize=24, fontweight='bold', pad=20)
+                plt.title(f"CANCHAS ANUAL MURO {muro.upper()}", fontsize=24, fontweight='bold', pad=20)
                 
                 # Etiquetas de ejes con fuentes más grandes - TODO EN MAYÚSCULAS
                 plt.xlabel("SECTOR", fontsize=20, fontweight='bold')

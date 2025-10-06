@@ -1344,7 +1344,19 @@ class CanchasDialog(QDialog):
 
 2️⃣ "Ultimo Crecimiento Anual": Suma de espesores en el período configurado
     • Calcula la suma de espesores para registros dentro del período establecido
-    • Formato: Número decimal (ej: 24.464)""")
+    • Formato: Número decimal (ej: 24.4640)
+
+3️⃣ "Movimiento Tierra Anual Neto": Diferencia Fill - Cut en el período
+    • Calcula Fill - Cut del último año (movimiento neto de tierra)
+    • Formato: Número decimal (ej: 150.2500)
+
+4️⃣ "Relleno Anual Acumulado": Suma total de Fill en el período
+    • Suma todos los valores de relleno del último año
+    • Formato: Número decimal (ej: 200.7850)
+
+5️⃣ "Corte Anual Acumulado": Suma total de Cut en el período
+    • Suma todos los valores de corte del último año
+    • Formato: Número decimal (ej: 50.5350)""")
         columnas_info.setStyleSheet("font-family: 'Courier New'; color: #555; background-color: #f0f0ff; padding: 10px; border: 1px solid #ddd; border-radius: 3px; margin-top: 10px;")
         historical_layout.addWidget(columnas_info)
         
@@ -1744,7 +1756,22 @@ La columna 'Comentarios Espesor' se crea/actualiza automáticamente en 'Tabla Ba
 2️⃣ "Ultimo Crecimiento Anual": Suma de espesores en el periodo configurado
     • Input: Muro, Sector y Fecha de cada registro
     • Calcula suma de espesores en el periodo definido
-    • Formato: Número decimal (ej: 24.464)""")
+    • Formato: Número decimal (ej: 24.4640)
+
+3️⃣ "Movimiento Tierra Anual Neto": Diferencia Fill - Cut en el periodo
+    • Input: Muro, Sector y Fecha de cada registro
+    • Calcula Fill - Cut del último año (movimiento neto)
+    • Formato: Número decimal (ej: 150.2500)
+
+4️⃣ "Relleno Anual Acumulado": Suma total de Fill en el periodo
+    • Input: Muro, Sector y Fecha de cada registro
+    • Suma todos los valores de relleno del último año
+    • Formato: Número decimal (ej: 200.7850)
+
+5️⃣ "Corte Anual Acumulado": Suma total de Cut en el periodo
+    • Input: Muro, Sector y Fecha de cada registro
+    • Suma todos los valores de corte del último año
+    • Formato: Número decimal (ej: 50.5350)""")
         columnas_info.setStyleSheet("font-family: 'Courier New'; color: #555; background-color: #f8f8f8; padding: 10px; border: 1px solid #5F4B8B; border-radius: 3px;")
         columnas_layout.addWidget(columnas_info)
         
@@ -1755,7 +1782,7 @@ La columna 'Comentarios Espesor' se crea/actualiza automáticamente en 'Tabla Ba
         proceso_group = QtWidgets.QGroupBox("🔄 Proceso de Análisis")
         proceso_layout = QVBoxLayout()
         
-        proceso_info = QLabel("""El proceso de análisis realiza dos cálculos principales:
+        proceso_info = QLabel("""El proceso de análisis realiza cinco cálculos principales:
 
 1. ÚLTIMA INTERVENCIÓN:
    • Para cada registro de "Tabla Base Datos"
@@ -1769,6 +1796,13 @@ La columna 'Comentarios Espesor' se crea/actualiza automáticamente en 'Tabla Ba
    • Dentro del periodo configurado (365 días por defecto)
    • Suma todos los espesores encontrados
    • Guarda este valor como "Ultimo Crecimiento Anual"
+
+3. MOVIMIENTOS DE TIERRA ANUALES:
+   • Para cada registro busca Fill y Cut del último año
+   • Calcula movimiento neto (Fill - Cut) en metros cúbicos
+   • Calcula relleno acumulado (suma total de Fill)
+   • Calcula corte acumulado (suma total de Cut)
+   • Todos los valores con precisión de 4 decimales
 """)
         proceso_info.setStyleSheet("font-family: 'Courier New'; color: #555; background-color: #f0f0ff; padding: 10px; border: 1px solid #5F4B8B; border-radius: 3px;")
         proceso_layout.addWidget(proceso_info)
