@@ -145,7 +145,20 @@ Espesor Máx:    +3.78 m
 
 ### **📸 Reportes Visuales Automáticos**
 
-![P250925_MP_S5_TALUDSUPERIOR](https://github.com/user-attachments/assets/2237aba3-3d8b-4781-8a73-3799b37612f8)
+<!-- Imagen grande arriba -->
+
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/2237aba3-3d8b-4781-8a73-3799b37612f8" alt="P250925_MP_S5_TALUDSUPERIOR" width="100%">
+</p>
+
+<!-- Tres imágenes pequeñas abajo, alineadas en fila -->
+
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/27dc6742-722d-4af4-8e0a-b2340424c3f2" alt="G1250901_MP_S5_PLAT1" width="32%">
+  <img src="https://github.com/user-attachments/assets/77e61583-cadf-4627-b3cf-6a97da7e2f18" alt="G2250901_MP_S7_PLAT1" width="32%">
+  <img src="https://github.com/user-attachments/assets/c30e3d3d-b0dd-4c71-8ba9-935b6d760ba6" alt="PH250904_MP_S6_talud" width="32%">
+</p>
+
 
 
 ### **🗂️ Exportación LandXML Profesional**
