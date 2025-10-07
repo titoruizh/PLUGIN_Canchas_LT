@@ -1,10 +1,5 @@
 # 🏟️ Canchas Las Tortolas - Plugin QGIS Profesional
-
-
 ---
-
-<h2 align="center">📸 Plugin</h2>
-
 <p align="center">
   <img src="https://github.com/user-attachments/assets/f9a440b5-244f-44a4-8d78-35e133f56dea" 
        alt="Vista del Plugin" 
