@@ -230,7 +230,7 @@ Espesor Máx:    +3.78 m
 <h3>🗂️ <strong>Exportación LandXML Profesional</strong></h3>
 
 <pre style="font-size: 10px; line-height: 1.3; background-color: #f6f8fa; padding: 10px; border-radius: 8px; overflow-x: auto;">
-&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;?xml version="1.2" encoding="UTF-8"?&gt;
 &lt;LandXML xmlns="http://www.landxml.org/schema/LandXML-1.2"&gt;
   &lt;Project name="Canchas Las Tortolas"&gt;
     &lt;Surface name="Levantamiento_001"&gt;
