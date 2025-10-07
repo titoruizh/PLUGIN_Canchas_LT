@@ -10,7 +10,34 @@
 ## 📸 Plugin
 
 
+
 <img width="390" height="340" alt="SS Main" src="https://github.com/user-attachments/assets/c12f05c1-e482-41ee-bcfe-a2b085c7000a" />
+
+
+## 🚀 Ventaja 
+
+## ⚡ Impacto en Tiempos de Procesamiento
+
+| Método                     | Tiempo por cancha |     80 canchas    | Características                                                   |
+| :------------------------- | :---------------: | :---------------: | :---------------------------------------------------------------- |
+| 🧱 **CAD Manual**          |      8–10 min     |   ≈ **12 horas**  | Procesos manuales, sin reportes automáticos                       |
+| ⚙️ **Plugin Automatizado** |   **< 0.1 min**   | **≈ 5 min total** | Resultados completos con reportes, triangulaciones y validaciones |
+
+## ⏱️ Comparativa de Eficiencia
+
+```
+Tiempo total (80 canchas)
+───────────────────────────────
+CAD Manual        ██████████████████████████████████████  ~12 h
+Plugin Automatizado  █  ~5 min
+```
+
+
+📊 **Ahorro estimado:**
+🚀 Más de **99% menos tiempo** en procesamiento mensual
+💪 **De 12 horas a solo 5 minutos** con reportes y análisis listos
+
+
 
 
 ---
