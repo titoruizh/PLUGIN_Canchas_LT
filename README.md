@@ -6,52 +6,40 @@
 ## 📸 Plugin
 
 
-
 <img width="390" height="340" alt="SS Main" src="https://github.com/user-attachments/assets/c12f05c1-e482-41ee-bcfe-a2b085c7000a" />
 
 
-## 🚀 Ventaja 
+<h2 align="center">📏 Análisis Comparativo de Precisión</h2>
 
-<h2 align="center">🚀 Eficiencia Operacional</h2>
+<p align="center">
+  <!-- Reemplaza el enlace por tu imagen -->
+  <img src="https://github.com/user-attachments/assets/c99afda1-7dbd-4cfd-90ec-15410a1aa050" alt="Comparativa de espesores CAD vs Plugin" width="80%">
+</p>
 
 <table align="center">
   <tr>
-    <th>Método</th>
-    <th>Tiempo por Cancha</th>
-    <th>Tiempo Total (80 canchas)</th>
-    <th>Ahorro</th>
+    <th>Métrica</th>
+    <th>Valor (m)</th>
   </tr>
-  <tr>
-    <td>🧱 CAD Manual</td>
-    <td>8–10 min</td>
-    <td>≈ 12 horas</td>
-    <td>—</td>
-  </tr>
-  <tr>
-    <td>⚙️ Plugin Automatizado</td>
-    <td><strong>&lt; 0.1 min</strong></td>
-    <td><strong>≈ 5 min</strong></td>
-    <td><strong>−99%</strong></td>
-  </tr>
+  <tr><td>Promedio</td><td>0.0268</td></tr>
+  <tr><td>Desviación estándar</td><td>0.0379</td></tr>
+  <tr><td>Mínimo</td><td>0.0006</td></tr>
+  <tr><td>Máximo</td><td>0.1723</td></tr>
+  <tr><td>Mediana</td><td>0.0102</td></tr>
 </table>
 
-<p align="center">
-  <img src="https://img.shields.io/badge/Ahorro%20de%20tiempo-99%25-brightgreen?style=for-the-badge" />
-  <img src="https://img.shields.io/badge/Procesamiento%20mensual-12h→5min-blue?style=for-the-badge" />
-</p>
-
 <pre>
-Tiempo total (80 canchas)
-───────────────────────────────
-CAD Manual           ██████████████████████████████████████  ~12 h
-Plugin Automatizado  █  ~5 min
+Diferencia promedio entre métodos ≈ 2.7 cm
+────────────────────────────────────────────
+Valores estables y consistentes dentro de márgenes aceptables.
 </pre>
 
 <p align="center">
-📊 <strong>Ahorro estimado:</strong><br>
-🚀 Más de <strong>99% menos tiempo</strong> en procesamiento mensual<br>
-💪 <strong>De 12 horas a solo 5 minutos</strong> con reportes, triangulaciones y análisis listos
+📊 <strong>Interpretación:</strong><br>
+🔹 Diferencias menores a 3 cm en promedio entre el flujo CAD tradicional y el plugin<br>
+🔹 Validación robusta que confirma consistencia volumétrica y precisión topográfica
 </p>
+
 
 
 ---
