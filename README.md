@@ -20,28 +20,34 @@
 ### 🔍 1. Validación Espacial Avanzada
 
 * ✅ Normalización automática de nombres a mayúsculas
+* ✅ Verificación automática de formato CSV/ASC
+* ✅ Validación de sistemas de coordenadas (EPSG:32719)
 * ✅ Validación inteligente de nomenclatura con GPKG
+* ✅ Control de integridad espacial de archivos
 * ✅ Filtrado robusto de archivos RTCM / chequeo / INF
+* ✅ Detección de errores de formato topográfico
 * ✅ Detección y manejo de archivos con múltiples componentes en nombre
 
 ### 🔄 2. Procesamiento Visual Inteligente
 
 * 🎯 Generación automática de grupos QGIS con actualización de fecha
-* 🔺 Creación optimizada de triangulaciones con prefijos adecuados
-* 📐 Visualización avanzada con tamaños de fuente 3x más grandes
-* 🎨 Correcciones automáticas de nomenclatura G1 / G2 / PH en gráficos
+* 🔺 Creación de TIN (Triangulated Irregular Network)
+* 🔺 Creación de Poligonos
+* 🔺 Creación de Puntos
+* 📐 Generación de polígonos a partir de puntos topográficos
+* 🎨 Simbología automática por categorías
 
 ### 📊 3.1 Análisis de Datos Completo
 
 * 📋 Gestión avanzada de tablas con parseo flexible de nombres
-* 📈 Manejo robusto de formatos de nombres complejos (4+ componentes)
-* 🔢 Conversión automática de códigos de muro para búsqueda DEM
-* 📍 Extracción precisa de metadatos de fecha y ubicación
+* 📋 Extracción automática de vértices extremos
+* 📈 Generación de tabla base con metadata completa
+* 🔢 Análisis estadístico de elevaciones
 
 ### 📏 3.2 Cálculo Volumétrico Profesional + Pantallazos Movimiento de Tierra
 
-* ⚖️ Cálculos de corte/relleno con precisión de 4 decimales
-* 📊 Análisis de movimiento de tierra con reportes detallados
+* ⚖️ Análisis incremental Cut/Fill con DEM base
+* 📊 Cálculo de volúmenes con precisión topográfica
 * 📐 Determinación de espesores mínimos y máximos
 * 📈 Reportes estadísticos detallados de volúmenes
 * 📸 Generación de pantallazos con colores de corte y relleno
@@ -50,7 +56,7 @@
 
 * 📤 Exportación completa a formato LandXML con metadatos correctos
 * 🔺 Superficies TIN con nomenclatura estandarizada
-* 📊 Integración con flujos de trabajo profesionales CAD/BIM
+* 📊 Integración con flujos de trabajo profesionales CAD
 * ✅ Compatibilidad total con sistemas de coordenadas **EPSG:32719**
 
 ### 📸 4. Generación Semi-Automática de Reportes
