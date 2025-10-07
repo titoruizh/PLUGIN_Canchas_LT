@@ -101,7 +101,8 @@ Procesamiento_YYYY-MM-DD/
 
 ### **📋 Tabla Base de Datos con Metadata**
 
-*[Placeholder para screenshot de tabla de datos]*
+<img width="407" height="224" alt="SS tabla" src="https://github.com/user-attachments/assets/5c1d0f54-657d-49b9-b98c-b58b8352277c" />
+
 
 | Campo | Tipo | Descripción |
 |-------|------|-------------|
