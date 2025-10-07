@@ -7,9 +7,11 @@
 
 ---
 
-## 📸 Reporte Topográfico
+## 📸 Plugin
 
-<img width="631" height="685" alt="SS reporte" src="https://github.com/user-attachments/assets/282819f9-b3c6-4cda-a45a-d5efd3a9264a" />
+
+<img width="631" height="685" alt="SS reporte" src="https://github.com/user-attachments/assets/87f89e44-1c94-4085-8cfb-ce7c04916dd9" />
+
 
 
 ---
