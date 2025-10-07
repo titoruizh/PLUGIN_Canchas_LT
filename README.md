@@ -10,7 +10,7 @@
 ## 📸 Plugin
 
 
-<img width="631" height="685" alt="SS reporte" src="https://github.com/user-attachments/assets/87f89e44-1c94-4085-8cfb-ce7c04916dd9" />
+<img width="331" height="385" alt="SS reporte" src="https://github.com/user-attachments/assets/87f89e44-1c94-4085-8cfb-ce7c04916dd9" />
 
 
 
