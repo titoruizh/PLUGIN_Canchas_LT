@@ -1,10 +1,5 @@
 # 🏟️ Canchas Las Tortolas - Plugin QGIS Profesional
 
-[![QGIS Version](https://img.shields.io/badge/QGIS-3.28%2B-brightgreen.svg)](https://qgis.org)
-[![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)](https://github.com/titoruizh/PLUGIN_Canchas_LT)
-[![License](https://img.shields.io/badge/license-GPL--2.0-orange.svg)](LICENSE)
-[![Python](https://img.shields.io/badge/python-3.7%2B-blue.svg)](https://python.org)
-[![PyQt5](https://img.shields.io/badge/PyQt5-5.15%2B-green.svg)](https://pypi.org/project/PyQt5/)
 
 **Plugin especializado para procesamiento topográfico integral de canchas Las Tortolas desarrollado por Linkapsis**
 
@@ -32,29 +27,31 @@
 - 📐 Generación de polígonos a partir de puntos topográficos
 - 🎨 Simbología automática por categorías
 
-### 📊 **3. Análisis de Datos Completo**
+### 📊 **3.1 Análisis de Datos Completo**
 - 📋 Extracción automática de vértices extremos
 - 📈 Generación de tabla base con metadata completa
 - 🔢 Análisis estadístico de elevaciones
 - 📍 Cálculo de coordenadas de referencia
 
-### 📏 **4. Cálculo Volumétrico Profesional**
+### 📏 **3.2 Cálculo Volumétrico Profesional**
 - ⚖️ Análisis incremental Cut/Fill con DEM base
 - 📊 Cálculo de volúmenes con precisión topográfica
 - 📐 Determinación de espesores mínimos y máximos
 - 📈 Reportes estadísticos detallados
 
-### 📸 **5. Generación Automática de Reportes**
+  ### 🗂️ **3.3 Exportación LandXML**
+- 📤 Exportación completa a formato LandXML estándar
+- 🔺 Superficies TIN con metadatos completos
+- 📊 Compatibilidad con software CAD/topográfico
+- ✅ Validación automática de exportación
+
+### 📸 **4. Generación Semi-Automática de Reportes**
 - 🖼️ Pantallazos automáticos con prefijo "P"
 - 📄 Exportación a formato PDF profesional
 - 🔍 Factor de zoom configurable (1.3x por defecto)
 - 🎨 Layout automático optimizado
 
-### 🗂️ **6. Exportación LandXML**
-- 📤 Exportación completa a formato LandXML estándar
-- 🔺 Superficies TIN con metadatos completos
-- 📊 Compatibilidad con software CAD/topográfico
-- ✅ Validación automática de exportación
+
 
 ---
 
@@ -77,55 +74,6 @@ graph TD
     G --> M[📤 Archivo LandXML]
 ```
 
-### **Paso 1: Validación GIS** 🔍
-Verificación automática de la integridad espacial y formato de todos los archivos de entrada, asegurando compatibilidad con el sistema de coordenadas EPSG:32719.
-
-### **Paso 2: Procesamiento Visual** 🔄
-Generación de capas y grupos QGIS organizados cronológicamente, creación de TIN y polígonos con simbología profesional automática.
-
-### **Paso 3: Análisis de Datos y Volúmenes** 📊
-Extracción de coordenadas extremas, metadata completa, análisis volumétrico incremental con cálculos Cut/Fill y generación automática de pantallazos de diferencias DEM.
-
-### **Paso 4: Cálculo de Volúmenes Unificado** 📏📸
-Análisis volumétrico incremental comparando con DEM base, cálculo de Cut/Fill, determinación de espesores, generación simultánea de pantallazos regulares y de movimiento de tierras con simbología automática.
-
-### **Paso 5: Generación de Reportes** 📸
-Creación automática de imágenes georeferenciadas y reportes PDF con layout profesional optimizado.
-
----
-
-## 🚀 Instalación Detallada
-
-### **Requisitos del Sistema**
-
-| Componente | Versión Mínima | Recomendada |
-|------------|----------------|-------------|
-| **QGIS** | 3.28 LTR | 3.34+ |
-| **Python** | 3.7 | 3.9+ |
-| **PyQt5** | 5.15 | 5.15.7+ |
-| **GDAL** | 3.4 | 3.6+ |
-| **Sistema Operativo** | Windows 10, Linux Ubuntu 20.04 | Windows 11, Ubuntu 22.04 |
-
-### **Instalación desde GitHub**
-
-#### **Método 1: Descarga Directa**
-```bash
-# 1. Descargar el plugin
-git clone https://github.com/titoruizh/PLUGIN_Canchas_LT.git
-
-# 2. Copiar a directorio de plugins QGIS
-# Windows:
-cp -r PLUGIN_Canchas_LT "%APPDATA%\QGIS\QGIS3\profiles\default\python\plugins\canchas_las_tortolas"
-
-# Linux:
-cp -r PLUGIN_Canchas_LT "~/.local/share/QGIS/QGIS3/profiles/default/python/plugins/canchas_las_tortolas"
-```
-
-#### **Método 2: ZIP desde GitHub**
-1. 📥 Descargar ZIP desde [GitHub Releases](https://github.com/titoruizh/PLUGIN_Canchas_LT/releases)
-2. 📂 Extraer en carpeta de plugins QGIS
-3. 🔄 Reiniciar QGIS
-4. ✅ Activar plugin en `Complementos > Administrar e instalar complementos`
 
 ### **Configuración Inicial**
 
@@ -142,94 +90,6 @@ cp -r PLUGIN_Canchas_LT "~/.local/share/QGIS/QGIS3/profiles/default/python/plugi
 
 ### **Parámetros Principales Configurables**
 
-```python
-# Configuración de procesamiento
-PROC_ROOT = "E:\\CANCHAS_QFIELD\\QGIS PROCESAMIENTO\\Archivos Procesados TERRENO"
-PIXEL_SIZE = 0.1                    # Resolución TIN (metros)
-NUM_RANDOM_POINTS = 20              # Puntos para análisis estadístico
-PANTALLAZO_EXPANSION = 1.3          # Factor zoom para imágenes
-TARGET_CRS = "EPSG:32719"          # Sistema coordenadas UTM Zone 19S
-
-# Configuración de exportación
-XML_OUTPUT_DIR = "XML_EXPORTS"      # Directorio salida LandXML
-PDF_OUTPUT_DIR = "PDF_REPORTS"      # Directorio reportes PDF
-SCREENSHOT_PREFIX = "P"             # Prefijo imágenes pantallazos
-```
-
-### **Configuración Avanzada**
-
-| Parámetro | Valor por Defecto | Descripción |
-|-----------|-------------------|-------------|
-| `VALIDATION_TOLERANCE` | 0.001 | Tolerancia validación espacial (m) |
-| `TIN_MAX_POINTS` | 10000 | Máximo puntos para triangulación |
-| `VOLUME_PRECISION` | 0.01 | Precisión cálculos volumétricos (m³) |
-| `IMAGE_DPI` | 300 | Resolución imágenes exportadas |
-| `PDF_PAGE_SIZE` | A4 | Tamaño página reportes PDF |
-
----
-
-## 📖 Uso del Plugin
-
-### **Interface de Usuario con Qt Designer**
-
-*[Placeholder para screenshot de interface completa con pestañas]*
-
-La interface está organizada en **4 pestañas principales**:
-
-#### **🔍 Pestaña 1: Validación**
-- Configuración de rutas principales
-- Validación de archivos CSV/ASC
-- Verificación de integridad espacial
-- Reportes de errores y advertencias
-
-#### **🔄 Pestaña 2: Procesamiento**
-- Generación de grupos QGIS
-- Creación de TIN y polígonos
-- Configuración de simbología
-- Vista previa de resultados
-
-#### **📊 Pestaña 3: Análisis** (con sub-pestañas)
-- **3.1** 📋 Tabla Base: Metadata y coordenadas extremas
-- **3.2** �📸 Volúmenes y Pantallazos: Cálculos Cut/Fill incrementales con generación automática de imágenes de diferencias DEM
-- **3.3** 🗂️ XML: Exportación formato LandXML
-
-#### **📄 Pestaña 4: Datos Reporte**
-- Fusión de datos para reportes manuales
-- Normalización de fechas en tablas
-- Integración con datos históricos
-- Preparación de datos para compositor de QGIS
-
-### **Pasos de Configuración**
-
-1. **📁 Configurar Rutas**: Establecer directorios de trabajo en Pestaña 1
-2. **🔍 Validar Archivos**: Ejecutar validación completa de datos
-3. **🔄 Procesar Datos**: Generar grupos y capas QGIS organizadas
-4. **📊 Analizar Resultados**: Revisar metadata y cálculos volumétricos
-5. **📸 Generar Reportes**: Crear documentación automática
-6. **🗂️ Exportar**: Generar archivos LandXML para CAD
-
-### **Ejemplos de Uso**
-
-```python
-# Ejemplo configuración básica
-config = {
-    'proc_root': 'C:/Proyectos/Canchas/Procesados',
-    'gpkg_path': 'C:/Datos/levantamientos.gpkg',
-    'csv_folder': 'C:/Datos/CSV',
-    'img_folder': 'C:/Datos/Imagenes'
-}
-
-# Ejecutar validación
-resultado_validacion = plugin.ejecutar_validacion()
-
-# Procesar datos espaciales
-resultado_procesamiento = plugin.ejecutar_procesamiento()
-
-# Generar reportes
-resultado_reportes = plugin.ejecutar_reportes()
-```
-
----
 
 ## 📁 Formatos de Entrada
 
