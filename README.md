@@ -188,13 +188,13 @@ Procesamiento_YYYY-MM-DD/
 |-------|------|-------------|
 | `id_levantamiento` | Integer | ID único del levantamiento |
 | `fecha_procesamiento` | Date | Fecha de procesamiento |
-| `norte_min/max` | Double | Coordenadas extremas Norte |
-| `este_min/max` | Double | Coordenadas extremas Este |
-| `cota_min/max` | Double | Elevaciones extremas |
-| `area_2d` | Double | Área proyectada (m²) |
-| `area_3d` | Double | Área superficie real (m²) |
-| `num_puntos` | Integer | Cantidad de puntos |
-| `archivo_origen` | Text | Nombre archivo CSV original |
+| `Muro` | Text | Nombre Muro |
+| `Sector` | Text | Nombre Sector |
+| `P1` | Double | Coordenadas Punto 1 |
+| `P4` | Double | Coordenadas Punto 4 |
+| `cota` | Double | Elevaciones |
+| `Foto/Plano` | Integer | Nombre Archivo Foto/Plano |
+| `Operador` | Text | Nombre Operador |
 
 ### **⚖️ Análisis Volumétrico Cut/Fill**
 
