@@ -15,43 +15,44 @@
 
 ---
 
-## ⭐ Características Principales
+##⭐ Características Principales
 
-### 🔍 **1. Validación Espacial Avanzada**
-- ✅ Verificación automática de formato CSV/ASC
-- ✅ Validación de sistemas de coordenadas (EPSG:32719)
-- ✅ Control de integridad espacial de archivos
-- ✅ Detección de errores de formato topográfico
+###🔍 1. Validación Espacial Avanzada
+✅ Normalización automática de nombres a mayúsculas
+✅ Validación inteligente de nomenclatura con GPKG
+✅ Filtrado robusto de archivos RTCM/chequeo/inf
+✅ Detección y manejo de archivos con múltiples componentes en nombre
 
-### 🔄 **2. Procesamiento Visual Inteligente**
-- 🎯 Generación automática de grupos QGIS organizados por fecha
-- 🔺 Creación de TIN (Triangulated Irregular Network)
-- 📐 Generación de polígonos a partir de puntos topográficos
-- 🎨 Simbología automática por categorías
+###🔄 2. Procesamiento Visual Inteligente
+🎯 Generación automática de grupos QGIS con actualización de fecha
+🔺 Creación optimizada de triangulaciones con prefijos adecuados
+📐 Visualización avanzada con tamaños de fuente 3x más grandes
+🎨 Correcciones automáticas de nomenclatura G1/G2/PH en gráficos
 
-### 📊 **3.1 Análisis de Datos Completo**
-- 📋 Extracción automática de vértices extremos
-- 📈 Generación de tabla base con metadata completa
-- 🔢 Análisis estadístico de elevaciones
-- 📍 Cálculo de coordenadas de referencia
+###📊 3.1 Análisis de Datos Completo
+📋 Gestión avanzada de tablas con parseo flexible de nombres
+📈 Manejo robusto de formatos de nombres complejos (4+ componentes)
+🔢 Conversión automática de códigos de muro para búsqueda DEM
+📍 Extracción precisa de metadatos de fecha y ubicación
 
-### 📏 **3.2 Cálculo Volumétrico Profesional**
-- ⚖️ Análisis incremental Cut/Fill con DEM base
-- 📊 Cálculo de volúmenes con precisión topográfica
-- 📐 Determinación de espesores mínimos y máximos
-- 📈 Reportes estadísticos detallados
+###📏 3.2 Cálculo Volumétrico Profesional + Pantallazos Mov. Tierra
+⚖️ Cálculos de corte/relleno con precisión de 4 decimales
+📊 Análisis de movimiento de tierra con reportes detallados
+📐 Determinación de espesores mínimos y máximos
+📈 Reportes estadísticos detallados de volúmenes
+📸 Generacion de pantallazos con colores de corte y relleno
 
-  ### 🗂️ **3.3 Exportación LandXML**
-- 📤 Exportación completa a formato LandXML estándar
-- 🔺 Superficies TIN con metadatos completos
-- 📊 Compatibilidad con software CAD/topográfico
-- ✅ Validación automática de exportación
+###🗂️ 3.3 Exportación LandXML
+📤 Exportación completa a formato LandXML con metadatos correctos
+🔺 Superficies TIN con nomenclatura estandarizada
+📊 Integración con flujos de trabajo profesionales CAD/BIM
+✅ Compatibilidad total con sistemas de coordenadas EPSG:32719
 
-### 📸 **4. Generación Semi-Automática de Reportes**
-- 🖼️ Pantallazos automáticos con prefijo "P"
-- 📄 Exportación a formato PDF profesional
-- 🔍 Factor de zoom configurable (1.3x por defecto)
-- 🎨 Layout automático optimizado
+###📸 4. Generación Semi-Automática de Reportes
+🖼️ Sistema de pantallazos con prefijos claros y consistentes
+📄 Reportes PDF con firma digital y logos corporativos integrados
+📊 Gráficos de barras (G1) y series temporales (G2) con texto ampliado
+🔥 Heatmaps profesionales con barras de colores verticales optimizadas
 
 
 
