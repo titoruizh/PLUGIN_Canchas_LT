@@ -15,44 +15,51 @@
 
 ---
 
-##⭐ Características Principales
+## ⭐ Características Principales
 
-###🔍 1. Validación Espacial Avanzada
-✅ Normalización automática de nombres a mayúsculas
-✅ Validación inteligente de nomenclatura con GPKG
-✅ Filtrado robusto de archivos RTCM/chequeo/inf
-✅ Detección y manejo de archivos con múltiples componentes en nombre
+### 🔍 1. Validación Espacial Avanzada
 
-###🔄 2. Procesamiento Visual Inteligente
-🎯 Generación automática de grupos QGIS con actualización de fecha
-🔺 Creación optimizada de triangulaciones con prefijos adecuados
-📐 Visualización avanzada con tamaños de fuente 3x más grandes
-🎨 Correcciones automáticas de nomenclatura G1/G2/PH en gráficos
+* ✅ Normalización automática de nombres a mayúsculas
+* ✅ Validación inteligente de nomenclatura con GPKG
+* ✅ Filtrado robusto de archivos RTCM / chequeo / INF
+* ✅ Detección y manejo de archivos con múltiples componentes en nombre
 
-###📊 3.1 Análisis de Datos Completo
-📋 Gestión avanzada de tablas con parseo flexible de nombres
-📈 Manejo robusto de formatos de nombres complejos (4+ componentes)
-🔢 Conversión automática de códigos de muro para búsqueda DEM
-📍 Extracción precisa de metadatos de fecha y ubicación
+### 🔄 2. Procesamiento Visual Inteligente
 
-###📏 3.2 Cálculo Volumétrico Profesional + Pantallazos Mov. Tierra
-⚖️ Cálculos de corte/relleno con precisión de 4 decimales
-📊 Análisis de movimiento de tierra con reportes detallados
-📐 Determinación de espesores mínimos y máximos
-📈 Reportes estadísticos detallados de volúmenes
-📸 Generacion de pantallazos con colores de corte y relleno
+* 🎯 Generación automática de grupos QGIS con actualización de fecha
+* 🔺 Creación optimizada de triangulaciones con prefijos adecuados
+* 📐 Visualización avanzada con tamaños de fuente 3x más grandes
+* 🎨 Correcciones automáticas de nomenclatura G1 / G2 / PH en gráficos
 
-###🗂️ 3.3 Exportación LandXML
-📤 Exportación completa a formato LandXML con metadatos correctos
-🔺 Superficies TIN con nomenclatura estandarizada
-📊 Integración con flujos de trabajo profesionales CAD/BIM
-✅ Compatibilidad total con sistemas de coordenadas EPSG:32719
+### 📊 3.1 Análisis de Datos Completo
 
-###📸 4. Generación Semi-Automática de Reportes
-🖼️ Sistema de pantallazos con prefijos claros y consistentes
-📄 Reportes PDF con firma digital y logos corporativos integrados
-📊 Gráficos de barras (G1) y series temporales (G2) con texto ampliado
-🔥 Heatmaps profesionales con barras de colores verticales optimizadas
+* 📋 Gestión avanzada de tablas con parseo flexible de nombres
+* 📈 Manejo robusto de formatos de nombres complejos (4+ componentes)
+* 🔢 Conversión automática de códigos de muro para búsqueda DEM
+* 📍 Extracción precisa de metadatos de fecha y ubicación
+
+### 📏 3.2 Cálculo Volumétrico Profesional + Pantallazos Movimiento de Tierra
+
+* ⚖️ Cálculos de corte/relleno con precisión de 4 decimales
+* 📊 Análisis de movimiento de tierra con reportes detallados
+* 📐 Determinación de espesores mínimos y máximos
+* 📈 Reportes estadísticos detallados de volúmenes
+* 📸 Generación de pantallazos con colores de corte y relleno
+
+### 🗂️ 3.3 Exportación LandXML
+
+* 📤 Exportación completa a formato LandXML con metadatos correctos
+* 🔺 Superficies TIN con nomenclatura estandarizada
+* 📊 Integración con flujos de trabajo profesionales CAD/BIM
+* ✅ Compatibilidad total con sistemas de coordenadas **EPSG:32719**
+
+### 📸 4. Generación Semi-Automática de Reportes
+
+* 🖼️ Generacion de nuevas metricas de analisis de datos historicos 
+* 📄 Reportes PDF con firma digital y logos corporativos integrados
+* 📊 Gráficos de barras (G1) y series temporales (G2) historicos
+* 🔥 Heatmaps historicos profesionales
+* 📊 Análisis por sector involucrado
 
 
 
