@@ -130,10 +130,8 @@ Espesor Máx:    +3.78 m
 
 ### **📸 Reportes Visuales Automáticos**
 
-- **Imágenes JPG**: Prefijo "P" + ID levantamiento
-- **Resolución**: 300 DPI para impresión profesional
-- **Zoom**: Factor 1.3x automático para contexto óptimo
-- **Georeferenciación**: Incluida en metadatos EXIF
+![P250925_MP_S5_TALUDSUPERIOR](https://github.com/user-attachments/assets/2237aba3-3d8b-4781-8a73-3799b37612f8)
+
 
 ### **🗂️ Exportación LandXML Profesional**
 
@@ -163,42 +161,6 @@ Espesor Máx:    +3.78 m
   </Project>
 </LandXML>
 ```
-
----
-
-
-### **🧠 Módulos Core Detallados**
-
-#### **validation.py** 🔍
-- Validación espacial de archivos CSV/ASC
-- Verificación de sistemas de coordenadas
-- Control de integridad de datos topográficos
-- Detección de errores de formato
-
-#### **processing.py** 🔄
-- Generación de grupos QGIS organizados
-- Creación de TIN (Triangulated Irregular Network)
-- Procesamiento de polígonos a partir de puntos
-- Simbología automática por categorías
-
-#### **table_creation.py** 📋
-- Extracción de coordenadas extremas
-- Generación de metadata completa
-- Cálculos de áreas 2D y 3D
-- Análisis estadístico de elevaciones
-
-#### **volume_screenshot.py** �📸
-- Módulo unificado de cálculo volumétrico y generación de pantallazos
-- Análisis incremental Cut/Fill con pegado automático de TINs sobre DEMs
-- Generación simultánea de pantallazos regulares y de diferencias DEM
-- Simbología automática para visualización de corte/relleno
-- Validación y limpieza de archivos temporales
-
-#### **xml_export.py** 🗂️
-- Exportación formato LandXML estándar
-- Superficies TIN con metadatos completos
-- Compatibilidad software CAD/topográfico
-- Validación automática de exportación
 
 ---
 
