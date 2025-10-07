@@ -49,6 +49,30 @@ Plugin Automatizado  █  ~5 min
 💪 <strong>De 12 horas a solo 5 minutos</strong> con reportes, triangulaciones y análisis listos
 </p>
 
+<h3 align="center">📏 Métricas de Precisión (Diferencia CAD vs Plugin)</h3>
+
+<table align="center">
+  <tr>
+    <th>Promedio</th>
+    <th>Desv.</th>
+    <th>Mín</th>
+    <th>Máx</th>
+    <th>Mediana</th>
+  </tr>
+  <tr>
+    <td><strong>0.0268 m</strong></td>
+    <td><strong>0.0379 m</strong></td>
+    <td><strong>0.0006 m</strong></td>
+    <td><strong>0.1723 m</strong></td>
+    <td><strong>0.0102 m</strong></td>
+  </tr>
+</table>
+
+<p align="center">
+📐 <em>Promedio de desviación inferior a 3 cm entre ambos métodos.</em>
+</p>
+
+
 
 
 
