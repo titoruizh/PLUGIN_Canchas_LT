@@ -63,15 +63,15 @@ graph TD
     B --> C[🔄 Procesamiento Visual]
     C --> D[📊 Análisis de Datos]
     D --> E[📏 Cálculo Volumétrico]
-    E --> F[📸 Generación Reportes]
-    F --> G[🗂️ Exportación LandXML]
+    E --> F[🗂️ Generación LandXML]
+    F --> G[📸 Generación Datos reporte Historicos]
     
     B --> H[❌ Errores de Validación]
     C --> I[🎯 Grupos QGIS Organizados]
     D --> J[📋 Tabla Metadata]
     E --> K[⚖️ Análisis Cut/Fill]
-    F --> L[📄 PDF + Imágenes JPG]
-    G --> M[📤 Archivo LandXML]
+    F --> L[🗂️ Archivo .XML]
+    G --> M[📤 Uso de plantilla .qpt para Reportes]
 ```
 
 
