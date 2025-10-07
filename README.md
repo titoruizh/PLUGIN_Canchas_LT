@@ -7,9 +7,10 @@
 
 ---
 
-## 📸 Interface Principal
+## 📸 Reporte Topográfico
 
-*[Placeholder para screenshot de la interface principal del plugin]*
+<img width="631" height="685" alt="SS reporte" src="https://github.com/user-attachments/assets/282819f9-b3c6-4cda-a45a-d5efd3a9264a" />
+
 
 ---
 
