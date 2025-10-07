@@ -1,10 +1,6 @@
 # 🏟️ Canchas Las Tortolas - Plugin QGIS Profesional
 
 
-**Plugin especializado para procesamiento topográfico integral de canchas Las Tortolas desarrollado por Linkapsis**
-
-> 🚀 **Automatiza completamente** el flujo de trabajo topográfico desde validación hasta reportes finales con exportación LandXML
-
 ---
 
 ## 📸 Plugin
