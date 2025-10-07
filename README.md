@@ -8,7 +8,7 @@
 <p align="center">
   <img src="https://github.com/user-attachments/assets/f9a440b5-244f-44a4-8d78-35e133f56dea" 
        alt="Vista del Plugin" 
-       width="80%"
+       width="40%"
        style="border-radius: 12px; box-shadow: 0 0 12px rgba(0,0,0,0.3);">
 </p>
 
