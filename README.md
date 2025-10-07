@@ -44,19 +44,18 @@
   <img src="https://img.shields.io/badge/Procesamiento%20mensual-12h→5min-blue?style=for-the-badge" />
 </p>
 
-<p align="center">
-  🔥 De procesos manuales en CAD a reportes automáticos en minutos
-</p>
-
-```
+<pre>
 Tiempo total (80 canchas)
 ───────────────────────────────
-CAD Manual        ██████████████████████████████████████  ~12 h
+CAD Manual           ██████████████████████████████████████  ~12 h
 Plugin Automatizado  █  ~5 min
-```
-📊 **Ahorro estimado:**
-🚀 Más de **99% menos tiempo** en procesamiento mensual
-💪 **De 12 horas a solo 5 minutos** con reportes y análisis listos
+</pre>
+
+<p align="center">
+📊 <strong>Ahorro estimado:</strong><br>
+🚀 Más de <strong>99% menos tiempo</strong> en procesamiento mensual<br>
+💪 <strong>De 12 horas a solo 5 minutos</strong> con reportes, triangulaciones y análisis listos
+</p>
 
 
 ---
