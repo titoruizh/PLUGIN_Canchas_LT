@@ -227,34 +227,35 @@ Espesor Máx:    +3.78 m
 
 
 
-### **🗂️ Exportación LandXML Profesional**
+<h3>🗂️ <strong>Exportación LandXML Profesional</strong></h3>
 
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<LandXML xmlns="http://www.landxml.org/schema/LandXML-1.2">
-  <Project name="Canchas Las Tortolas">
-    <Surface name="Levantamiento_001">
-      <SourceData>
-        <Breaklines>
-          <Breakline>
-            <PntList3D>345678.25 7543210.50 1245.67 ...</PntList3D>
-          </Breakline>
-        </Breaklines>
-      </SourceData>
-      <Definition surfType="TIN">
-        <Pnts>
-          <P id="1">345678.25 7543210.50 1245.67</P>
+<pre style="font-size: 13px; line-height: 1.3; background-color: #f6f8fa; padding: 10px; border-radius: 8px; overflow-x: auto;">
+&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;LandXML xmlns="http://www.landxml.org/schema/LandXML-1.2"&gt;
+  &lt;Project name="Canchas Las Tortolas"&gt;
+    &lt;Surface name="Levantamiento_001"&gt;
+      &lt;SourceData&gt;
+        &lt;Breaklines&gt;
+          &lt;Breakline&gt;
+            &lt;PntList3D&gt;345678.25 7543210.50 1245.67 ...&lt;/PntList3D&gt;
+          &lt;/Breakline&gt;
+        &lt;/Breaklines&gt;
+      &lt;/SourceData&gt;
+      &lt;Definition surfType="TIN"&gt;
+        &lt;Pnts&gt;
+          &lt;P id="1"&gt;345678.25 7543210.50 1245.67&lt;/P&gt;
           ...
-        </Pnts>
-        <Faces>
-          <F>1 2 3</F>
+        &lt;/Pnts&gt;
+        &lt;Faces&gt;
+          &lt;F&gt;1 2 3&lt;/F&gt;
           ...
-        </Faces>
-      </Definition>
-    </Surface>
-  </Project>
-</LandXML>
-```
+        &lt;/Faces&gt;
+      &lt;/Definition&gt;
+    &lt;/Surface&gt;
+  &lt;/Project&gt;
+&lt;/LandXML&gt;
+</pre>
+
 ### **🗂️ Reporte Final**
 
 
