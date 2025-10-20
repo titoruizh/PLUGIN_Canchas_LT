@@ -774,6 +774,7 @@ class CanchasDialog(QDialog):
     def init_connections(self):
         """Conectar señales"""
         self.btn_close.clicked.connect(self.close)
+        # El botón de compositor ya está conectado en su creación: self.btn_open_composer.clicked.connect(self.abrir_compositor_plantilla)
     
     def select_file(self, line_edit, filter_text):
         """Seleccionar archivo"""
@@ -1280,6 +1281,8 @@ class CanchasDialog(QDialog):
         desc.setStyleSheet("color: gray; margin-bottom: 15px; font-size: 12px;")
         layout.addWidget(desc)
         
+        # Eliminado el grupo de compositor
+        
         # Configuración de reportes
         config_group = QtWidgets.QGroupBox("📋 Tablas utilizadas")
         config_layout = QVBoxLayout()
@@ -1407,6 +1410,29 @@ La columna 'Comentarios Espesor' se crea/actualiza automáticamente en 'Tabla Ba
         """)
         self.btn_reports.clicked.connect(self.ejecutar_fusion_y_analisis)
         layout.addWidget(self.btn_reports)
+        
+        # Botón para abrir el compositor - AGREGADO AQUÍ
+        self.btn_open_composer = QPushButton("🖨️ Abrir Compositor")
+        self.btn_open_composer.setStyleSheet("""
+            QPushButton {
+                background-color: #2E4057; 
+                color: white; 
+                font-weight: bold; 
+                padding: 12px; 
+                border: none; 
+                border-radius: 5px;
+                font-size: 13px;
+                margin-top: 5px;
+            }
+            QPushButton:hover {
+                background-color: #3D5A75;
+            }
+            QPushButton:pressed {
+                background-color: #1E2B3A;
+            }
+        """)
+        self.btn_open_composer.clicked.connect(self.abrir_compositor_plantilla)
+        layout.addWidget(self.btn_open_composer)
         
         tab.setLayout(layout)
         self.tab_widget.addTab(tab, "4. Datos Reporte")
@@ -1704,6 +1730,158 @@ La columna 'Comentarios Espesor' se crea/actualiza automáticamente en 'Tabla Ba
         self.log_message("⚠️ Esta funcionalidad ha sido reemplazada por 'Generar Datos Reporte'")
         self.log_message("ℹ️ Los reportes ahora se crean manualmente en el compositor de impresiones de QGIS")
         self.log_message("ℹ️ Use la tabla 'DATOS HISTORICOS' como fuente de datos para sus reportes")
+    
+    def abrir_compositor_plantilla(self):
+        """Abre el compositor de impresión con la plantilla predefinida y configura Atlas"""
+        try:
+            from qgis.core import (
+                QgsProject, QgsLayoutManager, QgsReadWriteContext, QgsPrintLayout,
+                QgsMapLayer
+            )
+            from qgis.PyQt.QtXml import QDomDocument
+            from qgis.utils import iface
+            import os
+            from datetime import datetime
+            
+            self.log_message("🖨️ Abriendo compositor con plantilla y configurando Atlas...")
+            
+            # Obtener la plantilla del plugin - usando la ruta correcta al directorio del plugin
+            plugin_dir = os.path.dirname(os.path.abspath(__file__))
+            template_path = os.path.join(plugin_dir, "resources", "templates", "Plantilla_Protocolos_LT.qpt")
+            
+            if not os.path.exists(template_path):
+                self.log_message(f"❌ Error: No se encontró la plantilla en {template_path}")
+                return
+            
+            # Obtener el PROC_ROOT para sustituirlo en las expresiones
+            proc_root_text = self.proc_root.text().strip()
+            if not proc_root_text:
+                self.log_message("⚠️ PROC_ROOT no configurado, se usará la plantilla sin modificaciones")
+                # Leer el archivo QPT sin modificaciones
+                with open(template_path, 'r', encoding='utf-8') as f:
+                    template_content = f.read()
+            else:
+                # Normalizar la ruta PROC_ROOT (usando forward slash)
+                proc_root_normalized = proc_root_text.replace('\\', '/')
+                
+                # Leer el archivo QPT
+                with open(template_path, 'r', encoding='utf-8') as f:
+                    template_content = f.read()
+                
+                # Reemplazo directo en el texto (enfoque más simple)
+                self.log_message(f"🔄 Aplicando reemplazos de rutas con PROC_ROOT: {proc_root_normalized}")
+                
+                # Buscar patrones comunes de rutas en las expresiones
+                patrones_rutas = [
+                    # Patrones de rutas absolutas comunes (ajustar según sea necesario)
+                    r"'[A-Z]:/[^']*?/IMAGENES/'",
+                    r"'[A-Z]:/[^']*?/Planos/'",
+                    r"'[A-Z]:/[^']*?/Aux Reporte/Grafico Barras/'",
+                    r"'[A-Z]:/[^']*?/Aux Reporte/Grafico Series/'",
+                    r"'[A-Z]:/[^']*?/Aux Reporte/Pantallazos Heatmap/'"
+                ]
+                
+                reemplazos_rutas = [
+                    f"'{proc_root_normalized}/IMAGENES/'",
+                    f"'{proc_root_normalized}/Planos/'",
+                    f"'{proc_root_normalized}/Aux Reporte/Grafico Barras/'",
+                    f"'{proc_root_normalized}/Aux Reporte/Grafico Series/'",
+                    f"'{proc_root_normalized}/Aux Reporte/Pantallazos Heatmap/'"
+                ]
+                
+                # Aplicar todos los reemplazos
+                import re
+                for i, patron in enumerate(patrones_rutas):
+                    # Contar cuántas veces aparece el patrón
+                    coincidencias = len(re.findall(patron, template_content))
+                    if coincidencias > 0:
+                        # Aplicar el reemplazo
+                        template_content = re.sub(patron, reemplazos_rutas[i], template_content)
+                        self.log_message(f"✔️ Reemplazo aplicado: {patron} → {reemplazos_rutas[i]} ({coincidencias} coincidencias)")
+                
+            # Crear un archivo temporal con el contenido modificado
+            import tempfile
+            temp_qpt = os.path.join(tempfile.gettempdir(), f"Plantilla_LT_Temp_{datetime.now().strftime('%Y%m%d_%H%M%S')}.qpt")
+            
+            with open(temp_qpt, 'w', encoding='utf-8') as f:
+                f.write(template_content)
+                
+            self.log_message(f"📄 Plantilla temporal creada en: {temp_qpt}")
+            
+            # Ahora cargar el documento desde el archivo temporal
+            with open(temp_qpt, 'r', encoding='utf-8') as f:
+                template_content = f.read()
+                
+            # Crear un documento DOM a partir del contenido modificado
+            doc = QDomDocument()
+            doc.setContent(template_content)
+            
+            # Obtener el proyecto actual y el layout manager
+            project = QgsProject.instance()
+            layout_manager = project.layoutManager()
+            
+            # Crear nombre único para la composición
+            layout_name = f"Reporte_Canchas_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            
+            # Verificar si ya existe un layout con ese nombre y eliminarlo
+            existing_layout = layout_manager.layoutByName(layout_name)
+            if existing_layout:
+                layout_manager.removeLayout(existing_layout)
+                
+            # Crear un nuevo layout
+            layout = QgsPrintLayout(project)
+            layout.setName(layout_name)
+            
+            # Cargar desde documento
+            context = QgsReadWriteContext()
+            if not layout.readLayoutXml(doc.documentElement(), doc, context):
+                self.log_message("❌ Error al cargar la plantilla")
+                return
+                
+            # Agregar al proyecto
+            layout_manager.addLayout(layout)
+            
+            # Buscar la capa "Tabla Base Datos"
+            tabla_layer = None
+            for layer in project.mapLayers().values():
+                if layer.name() == "Tabla Base Datos" and layer.type() == QgsMapLayer.VectorLayer:
+                    tabla_layer = layer
+                    break
+                    
+            if not tabla_layer:
+                self.log_message("❌ Error: No se encontró la capa 'Tabla Base Datos'")
+                self.log_message("ℹ️ Debe crear la tabla base antes de usar esta funcionalidad")
+                return
+                
+            # Configurar Atlas para la tabla
+            atlas = layout.atlas()
+            if atlas:
+                # Configurar capa de cobertura
+                atlas.setCoverageLayer(tabla_layer)
+                
+                # Habilitar Atlas
+                atlas.setEnabled(True)
+                
+                # Configurar orden
+                atlas.setSortFeatures(True)
+                atlas.setSortExpression('"Protocolo Topografico"')
+                atlas.setSortAscending(True)
+                
+                self.log_message("✔️ Atlas configurado correctamente con 'Tabla Base Datos'")
+            
+            # El código para actualizar las expresiones dinámicas ahora se ejecuta directamente sobre el XML
+                
+            # Abrir el diseñador con el layout
+            iface.openLayoutDesigner(layout)
+            
+            self.log_message("✔️ Compositor abierto exitosamente")
+            self.log_message("ℹ️ Configure filtros por muro usando la expresión: \"Muro\" = 'Principal'")
+            self.log_message("ℹ️ Para generar PDF use el botón 'Exportar Atlas como PDF'")
+            
+        except Exception as e:
+            import traceback
+            self.log_message(f"❌ Error al abrir el compositor: {str(e)}")
+            self.log_message(f"📋 Detalles: {traceback.format_exc()}")
         
     def create_historical_tab(self):
         """Pestaña 5: Análisis Histórico"""
