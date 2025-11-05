@@ -648,15 +648,86 @@ class ValidationProcessor:
     # VALIDACIÓN Y PROCESAMIENTO GENERAL
     # =========================
 
+    def normalizar_ruta_archivos_nube(self, ruta):
+        """
+        Normaliza rutas que contengan ARCHIVOS_NUBE eliminando prefijos y estandarizando barras
+        
+        Ejemplos:
+        E:\CANCHAS_QFIELD\QFIELD TERRENO\QFIELD\ARCHIVOS_NUBE\CSV-ASC\archivo.csv
+        -> ARCHIVOS_NUBE/CSV-ASC/archivo.csv
+        
+        E:\CANCHAS_QFIELD\QFIELD TERRENO\QFIELD\ARCHIVOS_NUBE\IMAGENES\foto.jpg
+        -> ARCHIVOS_NUBE/IMAGENES/foto.jpg
+        """
+        if not ruta:
+            return ruta
+            
+        # Convertir todas las barras a forward slash para estandarizar
+        ruta_normalizada = str(ruta).replace("\\", "/")
+        
+        # Buscar la posición de ARCHIVOS_NUBE (case insensitive)
+        ruta_upper = ruta_normalizada.upper()
+        pos_archivos_nube = ruta_upper.find("ARCHIVOS_NUBE")
+        
+        if pos_archivos_nube != -1:
+            # Extraer desde ARCHIVOS_NUBE hasta el final
+            ruta_final = ruta_normalizada[pos_archivos_nube:]
+            if ruta_normalizada != ruta_final:  # Solo log si hubo cambio
+                self.log_callback(f"   🔄 Ruta normalizada: {ruta} -> {ruta_final}")
+            return ruta_final
+        
+        # Si no contiene ARCHIVOS_NUBE, devolver la ruta original normalizada
+        return ruta_normalizada
+
     def actualizar_nombres_capa(self, capa):
+        """
+        Actualiza y normaliza los campos de rutas en la capa, eliminando prefijos largos
+        y estandarizando el formato de rutas
+        """
         idx_nom = capa.fields().indexOf(self.COLUMNA_NOMBRE)
+        idx_csv = capa.fields().indexOf(".CSV")
+        idx_foto = capa.fields().indexOf("Foto")
+        
         capa.startEditing()
+        total_actualizados = 0
+        
+        self.log_callback("🔄 Normalizando rutas de archivos en GPKG...")
+        
         for feat in capa.getFeatures():
-            v = feat[".CSV"]
-            if v and v.startswith("ARCHIVOS_NUBE/CSV-ASC/"):
-                capa.changeAttributeValue(feat.id(), idx_nom, v.replace("ARCHIVOS_NUBE/CSV-ASC/", ""))
+            fid = feat.id()
+            cambios_realizados = False
+            
+            # Normalizar campo .CSV
+            if idx_csv >= 0:
+                csv_actual = feat[".CSV"]
+                if csv_actual:
+                    csv_normalizado = self.normalizar_ruta_archivos_nube(csv_actual)
+                    if csv_actual != csv_normalizado:
+                        capa.changeAttributeValue(fid, idx_csv, csv_normalizado)
+                        cambios_realizados = True
+            
+            # Normalizar campo Foto
+            if idx_foto >= 0:
+                foto_actual = feat["Foto"]
+                if foto_actual:
+                    foto_normalizada = self.normalizar_ruta_archivos_nube(foto_actual)
+                    if foto_actual != foto_normalizada:
+                        capa.changeAttributeValue(fid, idx_foto, foto_normalizada)
+                        cambios_realizados = True
+            
+            # Actualizar NombreArchivo basado en el campo .CSV normalizado
+            if idx_nom >= 0 and idx_csv >= 0:
+                csv_normalizado = feat[".CSV"] if not cambios_realizados else self.normalizar_ruta_archivos_nube(feat[".CSV"])
+                if csv_normalizado and csv_normalizado.startswith("ARCHIVOS_NUBE/CSV-ASC/"):
+                    nombre_archivo = csv_normalizado.replace("ARCHIVOS_NUBE/CSV-ASC/", "")
+                    capa.changeAttributeValue(fid, idx_nom, nombre_archivo)
+                    cambios_realizados = True
+            
+            if cambios_realizados:
+                total_actualizados += 1
+        
         capa.commitChanges()
-        self.log_callback("✅ Campos 'NombreArchivo' actualizados sin prefijo")
+        self.log_callback(f"✅ Rutas normalizadas y campos actualizados: {total_actualizados} registros")
 
     def procesar_archivos_y_validar(self, capa, carpeta_b):
         # Estadísticas de procesamiento
@@ -931,48 +1002,63 @@ class ValidationProcessor:
                 cambios_realizados = False
                 
                 # Actualizar campo Muro a mayúsculas
-                muro_actual = feature.get("Muro", "")
-                if muro_actual and str(muro_actual) != str(muro_actual).upper():
-                    idx_muro = capa.fields().indexOf("Muro")
-                    if idx_muro >= 0:
-                        capa.changeAttributeValue(fid, idx_muro, str(muro_actual).upper())
-                        cambios_realizados = True
+                try:
+                    muro_actual = feature["Muro"] if "Muro" in [field.name() for field in feature.fields()] else ""
+                    if muro_actual and str(muro_actual) != str(muro_actual).upper():
+                        idx_muro = capa.fields().indexOf("Muro")
+                        if idx_muro >= 0:
+                            capa.changeAttributeValue(fid, idx_muro, str(muro_actual).upper())
+                            cambios_realizados = True
+                except (KeyError, AttributeError):
+                    pass
                 
                 # Actualizar campo Sector a mayúsculas
-                sector_actual = feature.get("Sector", "")
-                if sector_actual and str(sector_actual) != str(sector_actual).upper():
-                    idx_sector = capa.fields().indexOf("Sector")
-                    if idx_sector >= 0:
-                        capa.changeAttributeValue(fid, idx_sector, str(sector_actual).upper())
-                        cambios_realizados = True
+                try:
+                    sector_actual = feature["Sector"] if "Sector" in [field.name() for field in feature.fields()] else ""
+                    if sector_actual and str(sector_actual) != str(sector_actual).upper():
+                        idx_sector = capa.fields().indexOf("Sector")
+                        if idx_sector >= 0:
+                            capa.changeAttributeValue(fid, idx_sector, str(sector_actual).upper())
+                            cambios_realizados = True
+                except (KeyError, AttributeError):
+                    pass
                 
                 # Actualizar campo Relleno a mayúsculas
-                relleno_actual = feature.get("Relleno", "")
-                if relleno_actual and str(relleno_actual) != str(relleno_actual).upper():
-                    idx_relleno = capa.fields().indexOf("Relleno")
-                    if idx_relleno >= 0:
-                        capa.changeAttributeValue(fid, idx_relleno, str(relleno_actual).upper())
-                        cambios_realizados = True
+                try:
+                    relleno_actual = feature["Relleno"] if "Relleno" in [field.name() for field in feature.fields()] else ""
+                    if relleno_actual and str(relleno_actual) != str(relleno_actual).upper():
+                        idx_relleno = capa.fields().indexOf("Relleno")
+                        if idx_relleno >= 0:
+                            capa.changeAttributeValue(fid, idx_relleno, str(relleno_actual).upper())
+                            cambios_realizados = True
+                except (KeyError, AttributeError):
+                    pass
                 
                 # Actualizar NombreArchivo a mayúsculas (solo el nombre, no la ruta)
-                nombre_archivo = feature.get("NombreArchivo", "")
-                if nombre_archivo:
-                    nombre_normalizado = self.normalizar_nombre_campo(nombre_archivo)
-                    if nombre_archivo != nombre_normalizado:
-                        idx_nombre = capa.fields().indexOf("NombreArchivo")
-                        if idx_nombre >= 0:
-                            capa.changeAttributeValue(fid, idx_nombre, nombre_normalizado)
-                            cambios_realizados = True
+                try:
+                    nombre_archivo = feature["NombreArchivo"] if "NombreArchivo" in [field.name() for field in feature.fields()] else ""
+                    if nombre_archivo:
+                        nombre_normalizado = self.normalizar_nombre_campo(nombre_archivo)
+                        if nombre_archivo != nombre_normalizado:
+                            idx_nombre = capa.fields().indexOf("NombreArchivo")
+                            if idx_nombre >= 0:
+                                capa.changeAttributeValue(fid, idx_nombre, nombre_normalizado)
+                                cambios_realizados = True
+                except (KeyError, AttributeError):
+                    pass
                 
                 # Actualizar Foto a mayúsculas (solo el nombre, no la ruta)
-                foto = feature.get("Foto", "")
-                if foto:
-                    foto_normalizada = self.normalizar_nombre_campo(foto)
-                    if foto != foto_normalizada:
-                        idx_foto = capa.fields().indexOf("Foto")
-                        if idx_foto >= 0:
-                            capa.changeAttributeValue(fid, idx_foto, foto_normalizada)
-                            cambios_realizados = True
+                try:
+                    foto = feature["Foto"] if "Foto" in [field.name() for field in feature.fields()] else ""
+                    if foto:
+                        foto_normalizada = self.normalizar_nombre_campo(foto)
+                        if foto != foto_normalizada:
+                            idx_foto = capa.fields().indexOf("Foto")
+                            if idx_foto >= 0:
+                                capa.changeAttributeValue(fid, idx_foto, foto_normalizada)
+                                cambios_realizados = True
+                except (KeyError, AttributeError):
+                    pass
                 
                 if cambios_realizados:
                     total_actualizados += 1
@@ -1020,13 +1106,36 @@ class ValidationProcessor:
         
         for feature in capa.getFeatures():
             try:
-                # Obtener datos del GPKG
-                fecha_gpkg = feature.get("Fecha", "")
-                muro_gpkg = feature.get("Muro", "")
-                sector_gpkg = feature.get("Sector", "")
-                relleno_gpkg = feature.get("Relleno", "")
-                archivo_csv = feature.get("NombreArchivo", "")
-                archivo_foto = feature.get("Foto", "")
+                # Obtener datos del GPKG usando acceso seguro
+                try:
+                    fecha_gpkg = feature["Fecha"] if "Fecha" in [field.name() for field in feature.fields()] else ""
+                except (KeyError, AttributeError):
+                    fecha_gpkg = ""
+                
+                try:
+                    muro_gpkg = feature["Muro"] if "Muro" in [field.name() for field in feature.fields()] else ""
+                except (KeyError, AttributeError):
+                    muro_gpkg = ""
+                
+                try:
+                    sector_gpkg = feature["Sector"] if "Sector" in [field.name() for field in feature.fields()] else ""
+                except (KeyError, AttributeError):
+                    sector_gpkg = ""
+                
+                try:
+                    relleno_gpkg = feature["Relleno"] if "Relleno" in [field.name() for field in feature.fields()] else ""
+                except (KeyError, AttributeError):
+                    relleno_gpkg = ""
+                
+                try:
+                    archivo_csv = feature["NombreArchivo"] if "NombreArchivo" in [field.name() for field in feature.fields()] else ""
+                except (KeyError, AttributeError):
+                    archivo_csv = ""
+                
+                try:
+                    archivo_foto = feature["Foto"] if "Foto" in [field.name() for field in feature.fields()] else ""
+                except (KeyError, AttributeError):
+                    archivo_foto = ""
                 
                 if not all([fecha_gpkg, muro_gpkg, sector_gpkg, relleno_gpkg]):
                     continue
@@ -1139,8 +1248,12 @@ class ValidationProcessor:
             if not layer.isValid():
                 raise Exception(f"No se pudo cargar la capa desde {self.TMP_GPKG}")
             
+            # Normalizar rutas de archivos PRIMERO (para eliminar prefijos largos)
+            self.progress_callback(25, "Normalizando rutas de archivos...")
+            self.actualizar_nombres_capa(layer)
+            
             # Normalizar nombres a mayúsculas y validar nomenclatura
-            self.progress_callback(25, "Normalizando nombres y validando nomenclatura...")
+            self.progress_callback(30, "Normalizando nombres y validando nomenclatura...")
             self.normalizar_nombres_y_validar_nomenclatura(layer)
             
             # Agregar al proyecto si no existe
@@ -1152,12 +1265,8 @@ class ValidationProcessor:
                 self.log_callback(f"ℹ️ Capa '{self.NOMBRE_CAPA}' ya está cargada")
             
             # Backup completo
-            self.progress_callback(35, "Creando backup completo...")
+            self.progress_callback(40, "Creando backup completo...")
             carpeta_b = self.respaldo_completo()
-            
-            # Actualizar nombres
-            self.progress_callback(45, "Actualizando nombres de archivos...")
-            self.actualizar_nombres_capa(layer)
             
             # Procesar y validar archivos (progreso 50-80 dentro del método)
             self.progress_callback(50, "Procesando y validando archivos...")
