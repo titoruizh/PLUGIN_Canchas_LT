@@ -40,7 +40,9 @@ class VolumeScreenshotProcessor:
     
     def __init__(self, proc_root, num_random_points=20, min_espesor=0.01, resample_algorithm='bilinear',
                  screenshot_width=800, screenshot_height=500, expansion_factor=1.3, 
-                 background_layer="tif", progress_callback=None, log_callback=None):
+                 background_layer="tif", percentile_high=95, percentile_low=1, 
+                 max_expected_thickness=None, enable_outlier_filtering=True,
+                 progress_callback=None, log_callback=None):
         """
         Inicializar procesador unificado
         
@@ -53,6 +55,10 @@ class VolumeScreenshotProcessor:
             screenshot_height: Alto de imagen en píxeles (default 500)
             expansion_factor: Factor de expansión alrededor del área (default 1.3)
             background_layer: Nombre de la capa de fondo (default "tif")
+            percentile_high: Percentil alto para limitar espesor máximo (default 99)
+            percentile_low: Percentil bajo para ajustar espesor mínimo (default 1)
+            max_expected_thickness: Límite absoluto de espesor en metros (default None = sin límite)
+            enable_outlier_filtering: Activar filtrado de outliers por percentiles (default True)
             progress_callback: Función callback para actualizar progreso
             log_callback: Función callback para logs
         """
@@ -63,6 +69,12 @@ class VolumeScreenshotProcessor:
         self.NUM_RANDOM_POINTS = num_random_points
         self.MIN_ESPESOR = min_espesor
         self.resample_algorithm = resample_algorithm
+        
+        # Parámetros de filtrado de outliers
+        self.PERCENTILE_HIGH = percentile_high
+        self.PERCENTILE_LOW = percentile_low
+        self.MAX_EXPECTED_THICKNESS = max_expected_thickness
+        self.ENABLE_OUTLIER_FILTERING = enable_outlier_filtering
         
         # Parámetros de pantallazos
         self.PANTALLAZO_ANCHO = screenshot_width
@@ -317,7 +329,15 @@ class VolumeScreenshotProcessor:
         return nombre[1:] if nombre.startswith("F") else nombre
 
     def calcular_volumenes(self, poligono_layer, tin, base, tabla, base_name):
-        """Calcula volúmenes y espesores y actualiza la tabla"""
+        """
+        Calcula volúmenes y espesores y actualiza la tabla
+        
+        Aplica filtrado de outliers por percentiles para evitar espesores máximos irreales:
+        - Utiliza percentil alto (default P99) para limitar espesor máximo
+        - Utiliza percentil bajo (default P1) para ajustar espesor mínimo  
+        - Opcionalmente aplica límite absoluto (max_expected_thickness)
+        - Registra estadísticas detalladas de filtrado en logs
+        """
         try:
             project_crs = QgsProject.instance().crs()
             if not tin.crs().isValid():
@@ -379,8 +399,53 @@ class VolumeScreenshotProcessor:
 
             valid_espesores = np.abs(arr[~arr.mask])
             if valid_espesores.size > 0:
-                espesor_min = max(round(np.min(valid_espesores), 4), self.MIN_ESPESOR)
-                espesor_max = max(round(np.max(valid_espesores), 4), self.MIN_ESPESOR)
+                # Valores originales (sin filtros)
+                original_min = np.min(valid_espesores)
+                original_max = np.max(valid_espesores)
+                
+                # Aplicar filtrado de outliers si está habilitado
+                if self.ENABLE_OUTLIER_FILTERING and valid_espesores.size > 10:  # Mínimo 10 píxeles para percentiles
+                    # Calcular percentiles para filtrar outliers
+                    p_high = np.percentile(valid_espesores, self.PERCENTILE_HIGH)
+                    p_low = np.percentile(valid_espesores, self.PERCENTILE_LOW)
+                    
+                    # Contar outliers para reporte
+                    outliers_high = np.sum(valid_espesores > p_high)
+                    outliers_low = np.sum(valid_espesores < p_low)
+                    
+                    # Aplicar límites por percentiles
+                    candidate_max = min(original_max, p_high)
+                    candidate_min = max(original_min, p_low)
+                    
+                    # Aplicar límite absoluto si está configurado
+                    if self.MAX_EXPECTED_THICKNESS is not None:
+                        candidate_max = min(candidate_max, self.MAX_EXPECTED_THICKNESS)
+                    
+                    # Calcular espesores finales
+                    espesor_min = max(round(candidate_min, 4), self.MIN_ESPESOR)
+                    espesor_max = max(round(candidate_max, 4), self.MIN_ESPESOR)
+                    
+                    # Log detallado del filtrado
+                    self.log_callback(f"📊 Filtrado de outliers para {base_name}:")
+                    self.log_callback(f"   🔢 Píxeles válidos: {valid_espesores.size}")
+                    self.log_callback(f"   📈 Rango original: {original_min:.4f}m - {original_max:.4f}m")
+                    self.log_callback(f"   🎯 Percentiles P{self.PERCENTILE_LOW}/P{self.PERCENTILE_HIGH}: {p_low:.4f}m - {p_high:.4f}m")
+                    self.log_callback(f"   🚫 Outliers eliminados: {outliers_low + outliers_high} píxeles ({outliers_low} bajos, {outliers_high} altos)")
+                    self.log_callback(f"   ✅ Rango filtrado: {espesor_min:.4f}m - {espesor_max:.4f}m")
+                    
+                    if original_max != espesor_max:
+                        reduccion = ((original_max - espesor_max) / original_max) * 100
+                        self.log_callback(f"   📉 Espesor máximo reducido en {reduccion:.1f}% ({original_max:.4f}m → {espesor_max:.4f}m)")
+                
+                else:
+                    # Sin filtrado: usar valores originales
+                    espesor_min = max(round(original_min, 4), self.MIN_ESPESOR)
+                    espesor_max = max(round(original_max, 4), self.MIN_ESPESOR)
+                    
+                    if not self.ENABLE_OUTLIER_FILTERING:
+                        self.log_callback(f"⚠️ Filtrado de outliers deshabilitado para {base_name}")
+                    else:
+                        self.log_callback(f"⚠️ Pocos píxeles ({valid_espesores.size}) para filtrado de percentiles en {base_name}")
             else:
                 espesor_min = None
                 espesor_max = None
@@ -419,7 +484,7 @@ class VolumeScreenshotProcessor:
             except Exception as e:
                 self.log_callback(f"❌ Error al actualizar volúmenes y espesores en la tabla para {base_name}: {e}")
 
-            self.log_callback(f"✔️ Volúmenes y espesores calculados para {base_name}: Corte={corte:.2f} m³, Relleno={relleno:.2f} m³, Espesor medio={espesor_medio:.4f}, Espesor mínimo={espesor_min}, Espesor máximo={espesor_max}")
+            self.log_callback(f"✔️ Volúmenes y espesores calculados para {base_name}: Corte={corte:.2f} m³, Relleno={relleno:.2f} m³, Espesor medio={espesor_medio:.4f}m, Espesor mínimo={espesor_min}m, Espesor máximo={espesor_max}m")
 
         except Exception as e:
             self.log_callback(f"❌ Error al calcular volúmenes y espesores para {base_name}: {e}")
