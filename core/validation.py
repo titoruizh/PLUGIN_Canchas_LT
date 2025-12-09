@@ -61,6 +61,16 @@ class ValidationProcessor:
         self.COLUMNA_FOTO = "FOTO"
         self.COLUMNAS_REQUERIDAS = ["id", "norte", "este", "cota", "descripcion"]
         self.CRS_EPSG = "EPSG:32719"
+        
+        # Contadores para logs concisos
+        self.log_counters = {
+            'archivos_renombrados': 0,
+            'rutas_normalizadas': 0,
+            'auxiliares_eliminados': 0,
+            'csv_copiados': 0,
+            'jpg_copiados': 0,
+            'filas_filtradas': 0
+        }
 
     # =========================
     # UTILIDADES GENERALES
@@ -111,6 +121,76 @@ class ValidationProcessor:
             shutil.copy2(path, carpeta_b)
         except Exception as e:
             self.log_callback(f"⚠️ No se pudo respaldar {path}: {e}")
+
+    def detectar_errores_humanos(self, capa):
+        """Detecta errores humanos comunes antes de procesar"""
+        errores = []
+        advertencias = []
+        
+        # 1. Archivos CSV/ASC duplicados en GPKG
+        archivos_dict = {}
+        idx_csv = capa.fields().indexOf(".CSV")
+        
+        for feat in capa.getFeatures():
+            nombre = feat[self.COLUMNA_NOMBRE]
+            if nombre:
+                nombre_limpio = self.limpiar_nombre(nombre)
+                if nombre_limpio in archivos_dict:
+                    errores.append(f"❌ DUPLICADO: '{nombre}' aparece en filas {archivos_dict[nombre_limpio]} y {feat.id()}")
+                else:
+                    archivos_dict[nombre_limpio] = feat.id()
+        
+        # 2. Imágenes duplicadas en GPKG
+        fotos_dict = {}
+        idx_foto = capa.fields().indexOf("Foto")
+        
+        if idx_foto >= 0:
+            for feat in capa.getFeatures():
+                foto = feat["Foto"]
+                if foto:
+                    foto_limpia = self.limpiar_nombre(foto)
+                    if foto_limpia in fotos_dict:
+                        errores.append(f"❌ IMAGEN DUPLICADA: '{foto}' en filas {fotos_dict[foto_limpia]} y {feat.id()}")
+                    else:
+                        fotos_dict[foto_limpia] = feat.id()
+        
+        # 3. Inconsistencia nombre vs muro/sector en BD
+        idx_muro = capa.fields().indexOf("Muro")
+        idx_sector = capa.fields().indexOf("Sector")
+        
+        if idx_muro >= 0:
+            for feat in capa.getFeatures():
+                nombre = feat[self.COLUMNA_NOMBRE]
+                muro = feat["Muro"]
+                
+                if nombre and muro:
+                    # Extraer muro del nombre (ej: MP_S1_... -> MP)
+                    partes = nombre.split('_')
+                    if len(partes) >= 2:
+                        muro_en_nombre = partes[0].upper()
+                        if muro_en_nombre != muro.upper() and muro_en_nombre in ['MP', 'ME', 'MO']:
+                            advertencias.append(f"⚠️ INCONSISTENCIA fila {feat.id()}: Nombre indica '{muro_en_nombre}' pero BD tiene '{muro}'")
+        
+        # 4. Archivos físicos duplicados en carpetas
+        archivos_fisicos_csv = {}
+        if os.path.exists(self.DIR_CSV_ORIG):
+            for archivo in os.listdir(self.DIR_CSV_ORIG):
+                nombre_limpio = self.limpiar_nombre(archivo).upper()
+                if nombre_limpio in archivos_fisicos_csv:
+                    errores.append(f"❌ ARCHIVO DUPLICADO EN DISCO: '{archivo}' y '{archivos_fisicos_csv[nombre_limpio]}'")
+                else:
+                    archivos_fisicos_csv[nombre_limpio] = archivo
+        
+        archivos_fisicos_img = {}
+        if os.path.exists(self.DIR_IMG_ORIG):
+            for archivo in os.listdir(self.DIR_IMG_ORIG):
+                nombre_limpio = self.limpiar_nombre(archivo).upper()
+                if nombre_limpio in archivos_fisicos_img:
+                    errores.append(f"❌ IMAGEN DUPLICADA EN DISCO: '{archivo}' y '{archivos_fisicos_img[nombre_limpio]}'")
+                else:
+                    archivos_fisicos_img[nombre_limpio] = archivo
+        
+        return errores, advertencias
 
     # =========================
     # FUNCIONES DE PROCESAMIENTO CSV
@@ -165,8 +245,9 @@ class ValidationProcessor:
             df = df[~mask_problemas].reset_index(drop=True)
             filas_filtradas = filas_originales - len(df)
             
+            # Solo contar, no logear individualmente
             if filas_filtradas > 0:
-                self.log_callback(f"🧹 Filtradas {filas_filtradas} filas problemáticas (RTCM/inf/chequeo) en archivo")
+                self.log_counters['filas_filtradas'] += filas_filtradas
 
         header_keywords = {"id", "norte", "este", "cota", "desc", "descripcion", "x", "y", "z"}
         primera_fila = df.iloc[0].astype(str).str.lower()
@@ -455,7 +536,7 @@ class ValidationProcessor:
         for attempt in range(max_attempts):
             try:
                 shutil.copy2(ruta_a_copiar, dst_csv)
-                self.log_callback(f"🗃️ CSV copiado a procesados: {dst_csv}")
+                self.log_counters['csv_copiados'] += 1  # Solo contar, no logear
                 break
             except PermissionError as e:
                 if attempt < max_attempts - 1:
@@ -473,7 +554,7 @@ class ValidationProcessor:
             self.respaldar_archivo(orig_jpg, carpeta_b)
             dst_jpg = os.path.join(self.DIR_IMG_PROC, f"F{base_nuevo_nombre_limpio}.jpg")
             shutil.copy2(orig_jpg, dst_jpg)
-            self.log_callback(f"🖼️ JPG copiado a procesados: {dst_jpg}")
+            self.log_counters['jpg_copiados'] += 1  # Solo contar, no logear
 
         comentarios_final = res["comentarios"].copy()
         if comentarios_extra:
@@ -507,7 +588,7 @@ class ValidationProcessor:
         if os.path.exists(aux_xml):
             try:
                 os.remove(aux_xml)
-                self.log_callback(f"🧹 Archivo auxiliar eliminado: {aux_xml}")
+                self.log_counters['auxiliares_eliminados'] += 1  # Solo contar, no logear
             except Exception as e:
                 self.log_callback(f"⚠️ No se pudo eliminar {aux_xml}: {e}")
 
@@ -517,7 +598,7 @@ class ValidationProcessor:
             self.respaldar_archivo(orig_jpg, carpeta_b)
             dst_jpg = os.path.join(self.DIR_IMG_PROC, f"F{base_arc_limpio}.jpg")
             shutil.copy2(orig_jpg, dst_jpg)
-            self.log_callback(f"🖼️ JPG copiado a procesados (ASC): {dst_jpg}")
+            self.log_counters['jpg_copiados'] += 1  # Solo contar, no logear
 
         raster_layer = QgsRasterLayer(dst_asc, base_arc_limpio)
         if not raster_layer.isValid():
@@ -672,8 +753,8 @@ class ValidationProcessor:
         if pos_archivos_nube != -1:
             # Extraer desde ARCHIVOS_NUBE hasta el final
             ruta_final = ruta_normalizada[pos_archivos_nube:]
-            if ruta_normalizada != ruta_final:  # Solo log si hubo cambio
-                self.log_callback(f"   🔄 Ruta normalizada: {ruta} -> {ruta_final}")
+            if ruta_normalizada != ruta_final:  # Solo contar si hubo cambio
+                self.log_counters['rutas_normalizadas'] += 1
             return ruta_final
         
         # Si no contiene ARCHIVOS_NUBE, devolver la ruta original normalizada
@@ -690,8 +771,6 @@ class ValidationProcessor:
         
         capa.startEditing()
         total_actualizados = 0
-        
-        self.log_callback("🔄 Normalizando rutas de archivos en GPKG...")
         
         for feat in capa.getFeatures():
             fid = feat.id()
@@ -727,7 +806,7 @@ class ValidationProcessor:
                 total_actualizados += 1
         
         capa.commitChanges()
-        self.log_callback(f"✅ Rutas normalizadas y campos actualizados: {total_actualizados} registros")
+        self.log_callback(f"📋 Normalización completada: {total_actualizados} registros actualizados")
 
     def procesar_archivos_y_validar(self, capa, carpeta_b):
         # Estadísticas de procesamiento
@@ -935,13 +1014,14 @@ class ValidationProcessor:
         self.log_callback("="*60)
 
     def limpiar_archivos_auxiliares(self):
+        """Limpia archivos auxiliares sin generar logs individuales"""
         if os.path.exists(self.DIR_CSV_PROC):
             for fname in os.listdir(self.DIR_CSV_PROC):
                 if fname.endswith('.asc.aux.xml'):
                     aux_path = os.path.join(self.DIR_CSV_PROC, fname)
                     try:
                         os.remove(aux_path)
-                        self.log_callback(f"🧹 Archivo auxiliar eliminado: {aux_path}")
+                        self.log_counters['auxiliares_eliminados'] += 1
                     except Exception as e:
                         self.log_callback(f"⚠️ No se pudo eliminar {aux_path}: {e}")
 
@@ -968,8 +1048,6 @@ class ValidationProcessor:
         for carpeta in carpetas:
             if not os.path.exists(carpeta):
                 continue
-                
-            self.log_callback(f"📁 Normalizando nombres en: {carpeta}")
             
             for archivo in os.listdir(carpeta):
                 ruta_actual = os.path.join(carpeta, archivo)
@@ -982,12 +1060,12 @@ class ValidationProcessor:
                         ruta_nueva = os.path.join(carpeta, nombre_mayuscula)
                         try:
                             os.rename(ruta_actual, ruta_nueva)
-                            self.log_callback(f"   ✅ Renombrado: {archivo} → {nombre_mayuscula}")
                             total_renombrados += 1
                         except Exception as e:
                             self.log_callback(f"   ❌ Error renombrando {archivo}: {e}")
         
-        self.log_callback(f"📊 Total archivos renombrados: {total_renombrados}")
+        if total_renombrados > 0:
+            self.log_callback(f"📋 Archivos renombrados a mayúsculas: {total_renombrados}")
     
     def actualizar_campos_gpkg_mayusculas(self, capa):
         """Actualiza los campos del GPKG para que coincidan con archivos normalizados"""
@@ -1256,6 +1334,23 @@ class ValidationProcessor:
             self.progress_callback(30, "Normalizando nombres y validando nomenclatura...")
             self.normalizar_nombres_y_validar_nomenclatura(layer)
             
+            # ⚡ DETECCIÓN INTELIGENTE DE ERRORES HUMANOS
+            self.progress_callback(35, "Detectando errores y duplicados...")
+            errores, advertencias = self.detectar_errores_humanos(layer)
+            
+            if errores or advertencias:
+                self.log_callback("\n" + "="*70)
+                if errores:
+                    self.log_callback("❌ ERRORES CRÍTICOS DETECTADOS:")
+                    for error in errores:
+                        self.log_callback(f"   {error}")
+                
+                if advertencias:
+                    self.log_callback("\n⚠️ ADVERTENCIAS:")
+                    for adv in advertencias:
+                        self.log_callback(f"   {adv}")
+                self.log_callback("="*70 + "\n")
+            
             # Agregar al proyecto si no existe
             project = QgsProject.instance()
             if not any(lyr.name() == self.NOMBRE_CAPA for lyr in project.mapLayers().values()):
@@ -1298,75 +1393,45 @@ class ValidationProcessor:
             }
 
     def generar_reporte_detallado(self):
-        """Genera un reporte final con estadísticas detalladas del procesamiento"""
+        """Genera un reporte CONCISO enfocado en errores y resúmenes"""
         stats = self.stats_procesamiento
+        counters = self.log_counters
+        
         self.log_callback("\n" + "="*70)
-        self.log_callback("📊 REPORTE FINAL DETALLADO DE PROCESAMIENTO")
+        self.log_callback("📊 RESUMEN DE VALIDACIÓN")
         self.log_callback("="*70)
         
-        # Resumen general
-        self.log_callback(f"📁 Total de archivos encontrados: {stats['total_archivos']}")
-        self.log_callback(f"📋 Archivos con registro en BD: {len(stats['archivos_con_bd'])}")
-        self.log_callback(f"📝 Archivos sin registro en BD: {len(stats['archivos_sin_bd'])}")
+        # Resumen de archivos procesados (UNA SOLA LÍNEA)
+        total_procesados = stats['archivos_exitosos'] + len(stats['archivos_asc_procesados'])
+        self.log_callback(f"✅ Procesados: {stats['archivos_exitosos']} CSV + {len(stats['archivos_asc_procesados'])} ASC = {total_procesados} archivos")
         
-        # Detalles de archivos sin registro en BD
-        if stats['archivos_sin_bd']:
-            self.log_callback(f"\n🔍 ARCHIVOS SIN REGISTRO EN BD ({len(stats['archivos_sin_bd'])}):")
-            for archivo in stats['archivos_sin_bd']:
-                self.log_callback(f"   📄 {archivo}")
-        
-        # Resultados de procesamiento
-        self.log_callback(f"\n📊 RESULTADOS DE PROCESAMIENTO:")
-        self.log_callback(f"✅ Archivos CSV procesados exitosamente: {stats['archivos_exitosos']}")
-        self.log_callback(f"🗂️ Archivos ASC procesados: {len(stats['archivos_asc_procesados'])}")
-        self.log_callback(f"❌ Archivos con errores: {stats['archivos_con_errores']}")
-        
-        # Lista de archivos exitosos (primeros 10)
-        if stats.get('archivos_csv_exitosos'):
-            self.log_callback(f"\n✅ ARCHIVOS CSV EXITOSOS ({len(stats['archivos_csv_exitosos'])}):")
-            for archivo in stats['archivos_csv_exitosos'][:10]:
-                self.log_callback(f"   📄 {archivo}")
-            if len(stats['archivos_csv_exitosos']) > 10:
-                self.log_callback(f"   ... y {len(stats['archivos_csv_exitosos']) - 10} más")
-        
-        # Lista de archivos ASC (primeros 10)
-        if stats['archivos_asc_procesados']:
-            self.log_callback(f"\n🗂️ ARCHIVOS ASC PROCESADOS ({len(stats['archivos_asc_procesados'])}):")
-            for archivo in stats['archivos_asc_procesados'][:10]:
-                self.log_callback(f"   📄 {archivo}")
-            if len(stats['archivos_asc_procesados']) > 10:
-                self.log_callback(f"   ... y {len(stats['archivos_asc_procesados']) - 10} más")
-        
-        # Detalles de errores
-        if stats['errores_por_archivo']:
-            self.log_callback(f"\n❌ DETALLE DE ERRORES ({len(stats['errores_por_archivo'])}):")
+        # Solo mostrar si hay errores
+        if stats['archivos_con_errores'] > 0:
+            self.log_callback(f"❌ Con errores: {stats['archivos_con_errores']}")
+            self.log_callback("\n🔍 DETALLE DE ERRORES:")
             for archivo, error in stats['errores_por_archivo'].items():
-                self.log_callback(f"   📁 {archivo}:")
-                self.log_callback(f"      {error}")
+                self.log_callback(f"   • {archivo}: {error}")
         
-        # Verificación de archivos en carpetas de salida
-        try:
-            archivos_csv_salida = len([f for f in os.listdir(self.DIR_CSV_PROC) if f.lower().endswith(('.csv', '.asc'))])
-            archivos_img_salida = len([f for f in os.listdir(self.DIR_IMG_PROC) if f.lower().endswith('.jpg')])
-            self.log_callback(f"\n📂 VERIFICACIÓN CARPETAS DE SALIDA:")
-            self.log_callback(f"🗃️ Archivos en CSV-ASC: {archivos_csv_salida}")
-            self.log_callback(f"🖼️ Archivos en IMAGENES: {archivos_img_salida}")
-        except Exception as e:
-            self.log_callback(f"⚠️ No se pudo verificar carpetas de salida: {e}")
+        # Archivos sin BD solo si existen
+        if stats['archivos_sin_bd']:
+            self.log_callback(f"\n⚠️ Sin registro en BD: {len(stats['archivos_sin_bd'])} archivos (copiados sin validar)")
         
-        # Explicación de términos
-        self.log_callback(f"\n📖 EXPLICACIÓN DE TÉRMINOS:")
-        self.log_callback(f"   • Archivos con registro en BD: Tienen entrada en la base de datos QGIS")
-        self.log_callback(f"   • Archivos sin registro en BD: No tienen entrada en BD, se copian pero no validan")
-        self.log_callback(f"   • CSV procesados exitosamente: Pasaron todas las validaciones")
-        self.log_callback(f"   • ASC procesados: Archivos de superficie procesados automáticamente")
+        # Resumen de operaciones (solo si hubo actividad)
+        if any(counters.values()):
+            self.log_callback(f"\n📋 Operaciones realizadas:")
+            if counters['csv_copiados'] > 0:
+                self.log_callback(f"   • {counters['csv_copiados']} archivos CSV copiados")
+            if counters['jpg_copiados'] > 0:
+                self.log_callback(f"   • {counters['jpg_copiados']} imágenes JPG copiadas")
+            if counters['filas_filtradas'] > 0:
+                self.log_callback(f"   • {counters['filas_filtradas']} filas problemáticas filtradas (RTCM/inf/chequeo)")
+            if counters['auxiliares_eliminados'] > 0:
+                self.log_callback(f"   • {counters['auxiliares_eliminados']} archivos auxiliares eliminados")
         
-        # Porcentajes de éxito
+        # Tasa de éxito
         archivos_intentados = stats['archivos_exitosos'] + stats['archivos_con_errores']
         if archivos_intentados > 0:
-            porcentaje_exito = (stats['archivos_exitosos'] / archivos_intentados * 100)
-            self.log_callback(f"\n📈 ESTADÍSTICAS FINALES:")
-            self.log_callback(f"   Tasa de éxito en validación CSV: {porcentaje_exito:.1f}%")
-            self.log_callback(f"   Total procesados (CSV+ASC): {archivos_intentados + len(stats['archivos_asc_procesados'])}")
+            tasa = (stats['archivos_exitosos'] / archivos_intentados * 100)
+            self.log_callback(f"\n📈 Tasa de éxito: {tasa:.1f}%")
         
         self.log_callback("="*70)
