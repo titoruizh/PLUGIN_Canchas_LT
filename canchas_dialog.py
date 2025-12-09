@@ -1760,17 +1760,22 @@ La columna 'Comentarios Espesor' se crea/actualiza automáticamente en 'Tabla Ba
                     # Patrones de rutas absolutas comunes (ajustar según sea necesario)
                     r"'[A-Z]:/[^']*?/IMAGENES/'",
                     r"'[A-Z]:/[^']*?/Planos/'",
+                    r"'[A-Z]:/[^']*?/Perfiles/'",
                     r"'[A-Z]:/[^']*?/Aux Reporte/Grafico Barras/'",
                     r"'[A-Z]:/[^']*?/Aux Reporte/Grafico Series/'",
-                    r"'[A-Z]:/[^']*?/Aux Reporte/Pantallazos Heatmap/'"
+                    r"'[A-Z]:/[^']*?/Aux Reporte/Pantallazos Heatmap/'",
+                    # Patrón para reemplazar [PROC_ROOT] placeholder
+                    r"'\[PROC_ROOT\]/Perfiles/'"
                 ]
                 
                 reemplazos_rutas = [
                     f"'{proc_root_normalized}/IMAGENES/'",
                     f"'{proc_root_normalized}/Planos/'",
+                    f"'{proc_root_normalized}/Perfiles/'",
                     f"'{proc_root_normalized}/Aux Reporte/Grafico Barras/'",
                     f"'{proc_root_normalized}/Aux Reporte/Grafico Series/'",
-                    f"'{proc_root_normalized}/Aux Reporte/Pantallazos Heatmap/'"
+                    f"'{proc_root_normalized}/Aux Reporte/Pantallazos Heatmap/'",
+                    f"'{proc_root_normalized}/Perfiles/'"
                 ]
                 
                 # Aplicar todos los reemplazos

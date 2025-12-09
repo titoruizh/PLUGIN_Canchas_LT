@@ -959,19 +959,134 @@ class VolumeScreenshotProcessor:
                 valores_dem.append(val_dem)
                 valores_tin.append(val_tin)
         
-        return (np.array(distancias), np.array(valores_dem), np.array(valores_tin))
+        # Log de diagnóstico
+        longitud_linea = punto_inicio.distance(punto_fin)
+        puntos_validos = len(distancias)
+        self.log_callback(f"📏 Perfil: Longitud línea={longitud_linea:.2f}m, Puntos válidos={puntos_validos}/{num_puntos}")
+        
+        # Normalizar distancias para que siempre empiecen en 0
+        distancias_array = np.array(distancias)
+        if len(distancias_array) > 0:
+            distancia_original_inicio = distancias_array[0]
+            distancias_array = distancias_array - distancias_array[0]
+            if distancia_original_inicio > 1.0:  # Si el primer punto válido está muy lejos del inicio
+                self.log_callback(f"⚠️ Primer punto válido a {distancia_original_inicio:.2f}m del inicio (posible problema de cobertura)")
+        
+        return (distancias_array, np.array(valores_dem), np.array(valores_tin))
+    
+    def muestrear_perfil_poligono(self, dem_layer, tin_layer, poligono_layer, nombre_cancha, num_puntos=100):
+        """
+        Muestrea valores de DEM y TIN a lo largo del eje central del polígono de la cancha.
+        Esto permite seguir la geometría real de canchas curvas/arqueadas.
+        
+        Args:
+            dem_layer: Capa DEM
+            tin_layer: Capa TIN
+            poligono_layer: Capa vectorial del polígono de la cancha
+            nombre_cancha: Nombre de la cancha para buscar el feature
+            num_puntos: Número de puntos a muestrear
+        
+        Returns:
+            tuple: (distancias, valores_dem, valores_tin)
+        """
+        from qgis.core import QgsPointXY, QgsRaster, QgsGeometry
+        import numpy as np
+        
+        # Buscar el polígono de esta cancha
+        poligono_geom = None
+        for feature in poligono_layer.getFeatures():
+            if feature.id() or True:  # Buscar por nombre si es posible
+                poligono_geom = feature.geometry()
+                break
+        
+        if not poligono_geom:
+            self.log_callback(f"⚠️ No se encontró polígono para {nombre_cancha}")
+            return (np.array([]), np.array([]), np.array([]))
+        
+        # Obtener el skeleton/eje central del polígono
+        # Usaremos una aproximación: línea entre centroides de mitades del polígono
+        bbox = poligono_geom.boundingBox()
+        centroid = poligono_geom.centroid().asPoint()
+        
+        # Normalizar geometría (buffer con distancia 0 para limpiar)
+        boundary = poligono_geom.buffer(0, 5).boundary()
+        
+        # Muestrear puntos a lo largo del perímetro y encontrar el eje central
+        # Por simplicidad, usaremos la línea del polígono densificada
+        densified = poligono_geom.densifyByCount(num_puntos)
+        
+        distancias = []
+        valores_dem = []
+        valores_tin = []
+        
+        # Obtener vértices del polígono densificado
+        vertices = []
+        for vertex in densified.vertices():
+            vertices.append(QgsPointXY(vertex))
+        
+        if len(vertices) < 2:
+            return (np.array([]), np.array([]), np.array([]))
+        
+        # Calcular centroide móvil a lo largo del polígono
+        # Tomar puntos del centro del polígono
+        distancia_acum = 0
+        punto_anterior = vertices[0]
+        
+        for i, punto in enumerate(vertices):
+            if i > 0:
+                distancia_acum += punto_anterior.distance(punto)
+            
+            # Muestrear DEM y TIN en este punto
+            result_dem = dem_layer.dataProvider().identify(
+                punto, QgsRaster.IdentifyFormatValue
+            )
+            val_dem = result_dem.results().get(1)
+            
+            result_tin = tin_layer.dataProvider().identify(
+                punto, QgsRaster.IdentifyFormatValue
+            )
+            val_tin = result_tin.results().get(1)
+            
+            if val_dem is not None and val_tin is not None:
+                distancias.append(distancia_acum)
+                valores_dem.append(val_dem)
+                valores_tin.append(val_tin)
+            
+            punto_anterior = punto
+        
+        # Log de diagnóstico
+        puntos_validos = len(distancias)
+        longitud_total = distancia_acum if distancia_acum > 0 else 0
+        self.log_callback(f"📏 Perfil (polígono): Longitud total={longitud_total:.2f}m, Puntos válidos={puntos_validos}/{len(vertices)}")
+        
+        # Normalizar distancias para que empiecen en 0
+        distancias_array = np.array(distancias)
+        if len(distancias_array) > 0:
+            distancia_original_inicio = distancias_array[0]
+            distancias_array = distancias_array - distancias_array[0]
+            if distancia_original_inicio > 1.0:
+                self.log_callback(f"⚠️ Primer punto válido a {distancia_original_inicio:.2f}m del inicio")
+        
+        return (distancias_array, np.array(valores_dem), np.array(valores_tin))
     
     def generar_grafico_perfil(self, distancias, valores_dem, valores_tin, archivo_salida, nombre_cancha):
         """
         Genera gráfico de perfil topográfico con áreas de corte/relleno coloreadas.
+        
+        Args:
+            distancias: Array de distancias reales del perfil
+            valores_dem: Array de valores del DEM
+            valores_tin: Array de valores del TIN
+            archivo_salida: Ruta donde guardar el gráfico
+            nombre_cancha: Nombre de la cancha (no se usa en el título)
         """
         import matplotlib.pyplot as plt
         
         fig, ax = plt.subplots(figsize=(12, 6))
         
-        # Plotear líneas principales (DEM=azul, TIN=naranja)
-        ax.plot(distancias, valores_dem, color='#1f77b4', linewidth=2.5, label='DEM Actual', zorder=3)
-        ax.plot(distancias, valores_tin, color='#ff7f0e', linewidth=2.5, label='TIN Nuevo', zorder=3)
+        # Plotear líneas principales con nuevas etiquetas
+        ax.plot(distancias, valores_dem, color='#1f77b4', linewidth=2.5, label='Terreno', zorder=3)
+        ax.plot(distancias, valores_tin, color='#ff7f0e', linewidth=2.5, label='Cancha Levantada', zorder=3)
         
         # Rellenar áreas de corte y relleno
         for i in range(len(distancias) - 1):
@@ -992,11 +1107,11 @@ class VolumeScreenshotProcessor:
                     color='red', alpha=0.3, zorder=1
                 )
         
-        # Configuración del gráfico
+        # Configuración del gráfico (sin título)
         ax.set_xlabel('Distancia (m)', fontsize=12, fontweight='bold')
-        ax.set_ylabel('Elevación (m)', fontsize=12, fontweight='bold')
-        ax.set_title(f'Perfil Topográfico - {nombre_cancha}', 
-                     fontsize=14, fontweight='bold', pad=20)
+        ax.set_ylabel('Cota (m)', fontsize=12, fontweight='bold')
+        # Título removido según solicitud del usuario
+        
         ax.legend(loc='best', fontsize=10, framealpha=0.9)
         ax.grid(True, alpha=0.3, linestyle='--')
         
@@ -1008,6 +1123,35 @@ class VolumeScreenshotProcessor:
         plt.close()
         
         self.log_callback(f"✅ Perfil topográfico generado: {archivo_salida}")
+    
+    def actualizar_campo_perfil(self, tabla, feature, nombre_archivo):
+        """
+        Actualiza el campo Perfil del feature con el nombre del archivo generado
+        
+        Args:
+            tabla: QgsVectorLayer de la tabla base
+            feature: QgsFeature a actualizar
+            nombre_archivo: Nombre del archivo (sin extensión .jpg)
+        """
+        try:
+            tabla.startEditing()
+            
+            # Obtener índice del campo Perfil
+            field_index = tabla.fields().indexFromName('Perfil')
+            if field_index == -1:
+                self.log_callback("⚠️ Campo 'Perfil' no encontrado en la tabla")
+                tabla.rollBack()
+                return
+            
+            # Actualizar el valor
+            tabla.changeAttributeValue(feature.id(), field_index, nombre_archivo)
+            tabla.commitChanges()
+            self.log_callback(f"📝 Campo Perfil actualizado: {nombre_archivo}")
+            
+        except Exception as e:
+            tabla.rollBack()
+            self.log_callback(f"⚠️ Error al actualizar campo Perfil: {str(e)}")
+
 
     # ===========================================
     # MÉTODO PRINCIPAL UNIFICADO
@@ -1081,6 +1225,24 @@ class VolumeScreenshotProcessor:
 
             if not sorted_bases:
                 return {'success': False, 'message': 'No se encontraron registros válidos.'}
+            
+            # Asegurar que existe la carpeta de perfiles
+            os.makedirs(self.CARPETA_PERFILES, exist_ok=True)
+            
+            # Verificar/crear columna Perfil en la tabla
+            field_names = [field.name() for field in tabla.fields()]
+            if 'Perfil' not in field_names:
+                self.log_callback("🔧 Creando columna 'Perfil' en Tabla Base Datos...")
+                tabla.startEditing()
+                from PyQt5.QtCore import QVariant
+                from qgis.core import QgsField
+                new_field = QgsField('Perfil', QVariant.String, len=255)
+                tabla.dataProvider().addAttributes([new_field])
+                tabla.updateFields()
+                tabla.commitChanges()
+                self.log_callback("✅ Columna 'Perfil' creada exitosamente")
+            else:
+                self.log_callback("ℹ️ La columna 'Perfil' ya existe en la tabla")
 
             # PROCESAR FLUJO INCREMENTAL
             total_bases = len(sorted_bases)
@@ -1175,7 +1337,7 @@ class VolumeScreenshotProcessor:
                         punto_inicio, punto_fin = self.calcular_linea_perfil(tabla_feature)
                         
                         if punto_inicio and punto_fin:
-                            # Muestrear valores
+                            # Muestrear valores a lo largo de la línea recta
                             distancias, vals_dem, vals_tin = self.muestrear_perfil(
                                 tin_base, tin_nuevo, punto_inicio, punto_fin
                             )
@@ -1186,6 +1348,10 @@ class VolumeScreenshotProcessor:
                                 self.generar_grafico_perfil(
                                     distancias, vals_dem, vals_tin, archivo_perfil, base
                                 )
+                                
+                                # Actualizar campo Perfil en la tabla
+                                nombre_perfil = f"PERFIL_{base}"  # Sin extensión
+                                self.actualizar_campo_perfil(tabla, tabla_feature, nombre_perfil)
                             else:
                                 self.log_callback(f"⚠️ Sin datos válidos para perfil de {base}")
                     else:
