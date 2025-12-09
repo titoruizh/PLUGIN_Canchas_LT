@@ -828,30 +828,15 @@ class CanchasDialog(QDialog):
             return
             
         # Verificar que existan las rutas originales
-        if not self.gpkg_path.text().strip():
-            self.log_message("❌ Error: Debe seleccionar el archivo GPKG original")
-            return
-            
-        if not self.csv_folder.text().strip():
-            self.log_message("❌ Error: Debe seleccionar la carpeta CSV-ASC")
-            return
-            
-        if not self.img_folder.text().strip():
-            self.log_message("❌ Error: Debe seleccionar la carpeta de imágenes")
+        """Ejecuta el proceso de validación completo"""
+        if not self.proc_root.text() or not self.gpkg_path.text() or not self.csv_folder.text() or not self.img_folder.text():
+            self.log_message("⚠️ Por favor complete todos los campos requeridos")
             return
         
-        # Mostrar progreso
         self.progress_bar.setVisible(True)
         self.progress_bar.setValue(0)
         
-        self.log_message("🔍 Iniciando validación completa...")
-        self.log_message(f"📁 PROC_ROOT: {self.proc_root.text()}")
-        self.log_message(f"📄 GPKG: {self.gpkg_path.text()}")
-        self.log_message(f"📊 CSV-ASC: {self.csv_folder.text()}")
-        self.log_message(f"🖼️ Imágenes: {self.img_folder.text()}")
-        
         try:
-            # Importar el procesador completo
             from .core.validation import ValidationProcessor
             
             # Crear procesador con callbacks
@@ -886,8 +871,7 @@ class CanchasDialog(QDialog):
     def update_progress(self, value, message=""):
         """Callback para actualizar progreso"""
         self.progress_bar.setValue(value)
-        if message:
-            self.log_message(f"📋 {message}")
+        # No logear mensajes rutinarios de progreso - solo actualizar barra
     
     def update_resample_tooltip(self, algorithm):
         """Actualiza el tooltip del algoritmo de remuestreo según la selección"""

@@ -64,6 +64,7 @@ class VolumeScreenshotProcessor:
         """
         self.PROC_ROOT = proc_root
         self.CARPETA_PLANOS = os.path.join(proc_root, "Planos")
+        self.CARPETA_PERFILES = os.path.join(proc_root, "Perfiles")  # Nueva carpeta para perfiles topográficos
         
         # Parámetros de cálculo volumétrico
         self.NUM_RANDOM_POINTS = num_random_points
@@ -578,8 +579,16 @@ class VolumeScreenshotProcessor:
             self.log_callback(f"❌ Error en cálculo de diferencia para {output_name}: Código {result}")
             return None
 
-    def generar_pantallazo_diferencia_dem(self, diff_layer, capa_fondo, archivo_salida):
-        """Genera pantallazo de diferencia DEM con simbología adaptativa de corte/relleno"""
+    def generar_pantallazo_diferencia_dem(self, diff_layer, capa_fondo, archivo_salida, punto_inicio_perfil=None, punto_fin_perfil=None):
+        """Genera pantallazo de diferencia DEM con simbología adaptativa de corte/relleno
+        
+        Args:
+            punto_inicio_perfil: QgsPointXY opcional para inicio de línea de perfil
+            punto_fin_perfil: QgsPointXY opcional para fin de línea de perfil
+        """
+        from PyQt5.QtGui import QPainter, QPen
+        from PyQt5.QtCore import Qt, QLineF, QPointF
+        
         project = QgsProject.instance()
         layer_tree = project.layerTreeRoot()
         visibility_state = {child.layer().name(): child.isVisible() 
@@ -671,6 +680,83 @@ class VolumeScreenshotProcessor:
             self._restore_visibility_dem(layer_tree, visibility_state, diff_layer, original_renderer)
             return False
         
+        # NUEVO: Dibujar línea de perfil si se proporcionaron los puntos
+        if punto_inicio_perfil and punto_fin_perfil:
+            painter = QPainter(img)
+            painter.setRenderHint(QPainter.Antialiasing)
+            
+            # Configurar pen: NEGRO SÓLIDO, discontinuo denso, FINO
+            pen = QPen(QColor(0, 0, 0, 255))  # Negro sólido 100% opaco
+            pen.setWidth(2)  # Más fino: 2px (antes 4px)
+            pen.setStyle(Qt.DashLine)  # Línea discontinua
+            pen.setDashPattern([4, 2])  # Patrón más denso: 4px línea, 2px espacio (antes 8,4)
+            painter.setPen(pen)
+            
+            # Convertir coordenadas del mundo real a píxeles de la imagen
+            map_extent = settings.extent()
+            
+            # Punto inicio
+            x1_rel = (punto_inicio_perfil.x() - map_extent.xMinimum()) / map_extent.width()
+            y1_rel = (map_extent.yMaximum() - punto_inicio_perfil.y()) / map_extent.height()
+            px1 = x1_rel * self.PANTALLAZO_ANCHO
+            py1 = y1_rel * self.PANTALLAZO_ALTO
+            
+            # Punto fin
+            x2_rel = (punto_fin_perfil.x() - map_extent.xMinimum()) / map_extent.width()
+            y2_rel = (map_extent.yMaximum() - punto_fin_perfil.y()) / map_extent.height()
+            px2 = x2_rel * self.PANTALLAZO_ANCHO
+            py2 = y2_rel * self.PANTALLAZO_ALTO
+            
+            # Dibujar línea
+            painter.drawLine(QPointF(px1, py1), QPointF(px2, py2))
+            
+            # Agregar leyenda en esquina inferior derecha
+            try:
+                from PyQt5.QtGui import QFont
+                from PyQt5.QtCore import QRectF
+                
+                # Configurar fuente
+                font = QFont("Arial", 10, QFont.Bold)
+                painter.setFont(font)
+                
+                # Texto de leyenda
+                texto_leyenda = "–––––– Perfil Topográfico"
+                metrics = painter.fontMetrics()
+                text_rect = metrics.boundingRect(texto_leyenda)
+                text_width = text_rect.width()
+                text_height = text_rect.height()
+                
+                # Posición: esquina inferior derecha con margen
+                margin = 15
+                text_x = self.PANTALLAZO_ANCHO - text_width - margin
+                text_y = self.PANTALLAZO_ALTO - text_height - margin
+                
+                # Dibujar rectángulo de fondo blanco semi-transparente
+                padding = 8
+                painter.setPen(Qt.NoPen)
+                painter.setBrush(QColor(255, 255, 255, 220))
+                painter.drawRect(
+                    int(text_x - padding), 
+                    int(text_y - padding), 
+                    int(text_width + 2*padding), 
+                    int(text_height + 2*padding)
+                )
+                
+                # Dibujar texto negro
+                painter.setPen(QColor(0, 0, 0, 255))
+                painter.drawText(
+                    int(text_x), 
+                    int(text_y + metrics.ascent()), 
+                    texto_leyenda
+                )
+                
+            except Exception as e:
+                self.log_callback(f"⚠️ Error dibujando leyenda en pantallazo: {e}")
+            
+            painter.end()
+            
+            self.log_callback(f"📏 Línea de perfil con etiqueta agregada al pantallazo")
+        
         success = img.save(archivo_salida, "jpg")
         if success:
             self.log_callback(f"✅ Pantallazo de diferencia DEM exportado: {archivo_salida}")
@@ -757,6 +843,171 @@ class VolumeScreenshotProcessor:
             except Exception as e:
                 self.log_callback(f"⚠️ No se pudo eliminar archivo temporal {temp_file}: {str(e)}")
         self.temp_files.clear()
+
+    # ===========================================
+    # FUNCIONES DE PERFILES TOPOGRÁFICOS
+    # ===========================================
+    
+    def calcular_linea_perfil(self, tabla_feature):
+        """
+        Calcula la línea de perfil a lo largo del lado más largo de la cancha usando P1-P4.
+        
+        P1 = Oeste (min X), P2 = Este (max X), P3 = Norte (max Y), P4 = Sur (min Y)
+        
+        Encuentra los dos pares de puntos OPUESTOS más cortos y une sus puntos medios.
+        
+        Returns:
+            tuple: (punto_inicio, punto_fin) como QgsPointXY
+        """
+        from qgis.core import QgsPointXY
+        
+        # Extraer coordenadas de P1-P4
+        p1_e, p1_n = tabla_feature["P1_ESTE"], tabla_feature["P1_NORTE"]  # Oeste
+        p2_e, p2_n = tabla_feature["P2_ESTE"], tabla_feature["P2_NORTE"]  # Este
+        p3_e, p3_n = tabla_feature["P3_ESTE"], tabla_feature["P3_NORTE"]  # Norte
+        p4_e, p4_n = tabla_feature["P4_ESTE"], tabla_feature["P4_NORTE"]  # Sur
+        
+        if None in [p1_e, p1_n, p2_e, p2_n, p3_e, p3_n, p4_e, p4_n]:
+            self.log_callback("⚠️ Coordenadas P1-P4 incompletas, no se puede generar perfil")
+            return None, None
+        
+        p1 = QgsPointXY(p1_e, p1_n)
+        p2 = QgsPointXY(p2_e, p2_n)
+        p3 = QgsPointXY(p3_e, p3_n)
+        p4 = QgsPointXY(p4_e, p4_n)
+        
+        # Calcular todas las distancias entre pares de puntos
+        dist_p1_p2 = p1.distance(p2)  # Oeste-Este
+        dist_p1_p3 = p1.distance(p3)  # Oeste-Norte
+        dist_p1_p4 = p1.distance(p4)  # Oeste-Sur
+        dist_p2_p3 = p2.distance(p3)  # Este-Norte
+        dist_p2_p4 = p2.distance(p4)  # Este-Sur
+        dist_p3_p4 = p3.distance(p4)  # Norte-Sur
+        
+        # Identificar los tres posibles pares OPUESTOS:
+        # Par 1: P1-P2 y P3-P4 (lados Este-Oeste opuestos)
+        # Par 2: P1-P3 y P2-P4 (diagonal 1)
+        # Par 3: P1-P4 y P2-P3 (diagonal 2)
+        
+        promedio_par1 = (dist_p1_p2 + dist_p3_p4) / 2
+        promedio_par2 = (dist_p1_p3 + dist_p2_p4) / 2
+        promedio_par3 = (dist_p1_p4 + dist_p2_p3) / 2
+        
+        self.log_callback(f"📐 Promedios pares: Par1(P1-P2/P3-P4)={promedio_par1:.2f}m, Par2(P1-P3/P2-P4)={promedio_par2:.2f}m, Par3(P1-P4/P2-P3)={promedio_par3:.2f}m")
+        
+        # El par con menor promedio son los lados MÁS CORTOS
+        # El perfil debe unir los puntos medios de ese par
+        if promedio_par1 <= promedio_par2 and promedio_par1 <= promedio_par3:
+            # Par más corto: P1-P2 y P3-P4
+            mid1 = QgsPointXY((p1_e + p2_e)/2, (p1_n + p2_n)/2)
+            mid2 = QgsPointXY((p3_e + p4_e)/2, (p3_n + p4_n)/2)
+            self.log_callback(f"📏 Perfil longitudinal: entre medios de P1-P2 y P3-P4")
+        elif promedio_par2 <= promedio_par3:
+            # Par más corto: P1-P3 y P2-P4
+            mid1 = QgsPointXY((p1_e + p3_e)/2, (p1_n + p3_n)/2)
+            mid2 = QgsPointXY((p2_e + p4_e)/2, (p2_n + p4_n)/2)
+            self.log_callback(f"📏 Perfil longitudinal: entre medios de P1-P3 y P2-P4")
+        else:
+            # Par más corto: P1-P4 y P2-P3
+            mid1 = QgsPointXY((p1_e + p4_e)/2, (p1_n + p4_n)/2)
+            mid2 = QgsPointXY((p2_e + p3_e)/2, (p2_n + p3_n)/2)
+            self.log_callback(f"📏 Perfil longitudinal: entre medios de P1-P4 y P2-P3")
+        
+        return (mid1, mid2)
+    
+    def muestrear_perfil(self, dem_layer, tin_layer, punto_inicio, punto_fin, num_puntos=100):
+        """
+        Muestrea valores de DEM y TIN a lo largo de una línea de perfil.
+        
+        Returns:
+            tuple: (distancias, valores_dem, valores_tin)
+        """
+        from qgis.core import QgsPointXY, QgsRaster
+        
+        distancias = []
+        valores_dem = []
+        valores_tin = []
+        
+        # Calcular longitud total
+        longitud_total = punto_inicio.distance(punto_fin)
+        
+        for i in range(num_puntos):
+            # Interpolación lineal a lo largo de la línea
+            t = i / (num_puntos - 1)  # 0 a 1
+            x = punto_inicio.x() + t * (punto_fin.x() - punto_inicio.x())
+            y = punto_inicio.y() + t * (punto_fin.y() - punto_inicio.y())
+            punto = QgsPointXY(x, y)
+            
+            # Distancia desde inicio
+            dist = punto_inicio.distance(punto)
+            
+            # Muestrear DEM
+            result_dem = dem_layer.dataProvider().identify(
+                punto, QgsRaster.IdentifyFormatValue
+            )
+            val_dem = result_dem.results().get(1)
+            
+            # Muestrear TIN
+            result_tin = tin_layer.dataProvider().identify(
+                punto, QgsRaster.IdentifyFormatValue
+            )
+            val_tin = result_tin.results().get(1)
+            
+            # Agregar solo si ambos valores son válidos
+            if val_dem is not None and val_tin is not None:
+                distancias.append(dist)
+                valores_dem.append(val_dem)
+                valores_tin.append(val_tin)
+        
+        return (np.array(distancias), np.array(valores_dem), np.array(valores_tin))
+    
+    def generar_grafico_perfil(self, distancias, valores_dem, valores_tin, archivo_salida, nombre_cancha):
+        """
+        Genera gráfico de perfil topográfico con áreas de corte/relleno coloreadas.
+        """
+        import matplotlib.pyplot as plt
+        
+        fig, ax = plt.subplots(figsize=(12, 6))
+        
+        # Plotear líneas principales (DEM=azul, TIN=naranja)
+        ax.plot(distancias, valores_dem, color='#1f77b4', linewidth=2.5, label='DEM Actual', zorder=3)
+        ax.plot(distancias, valores_tin, color='#ff7f0e', linewidth=2.5, label='TIN Nuevo', zorder=3)
+        
+        # Rellenar áreas de corte y relleno
+        for i in range(len(distancias) - 1):
+            if valores_tin[i] > valores_dem[i]:
+                # Relleno (verde tenue)
+                ax.fill_between(
+                    [distancias[i], distancias[i+1]],
+                    [valores_dem[i], valores_dem[i+1]],
+                    [valores_tin[i], valores_tin[i+1]],
+                    color='green', alpha=0.3, zorder=1
+                )
+            else:
+                # Corte (rojo tenue)
+                ax.fill_between(
+                    [distancias[i], distancias[i+1]],
+                    [valores_dem[i], valores_dem[i+1]],
+                    [valores_tin[i], valores_tin[i+1]],
+                    color='red', alpha=0.3, zorder=1
+                )
+        
+        # Configuración del gráfico
+        ax.set_xlabel('Distancia (m)', fontsize=12, fontweight='bold')
+        ax.set_ylabel('Elevación (m)', fontsize=12, fontweight='bold')
+        ax.set_title(f'Perfil Topográfico - {nombre_cancha}', 
+                     fontsize=14, fontweight='bold', pad=20)
+        ax.legend(loc='best', fontsize=10, framealpha=0.9)
+        ax.grid(True, alpha=0.3, linestyle='--')
+        
+        # Ajustar layout
+        plt.tight_layout()
+        
+        # Guardar
+        plt.savefig(archivo_salida, dpi=150, bbox_inches='tight')
+        plt.close()
+        
+        self.log_callback(f"✅ Perfil topográfico generado: {archivo_salida}")
 
     # ===========================================
     # MÉTODO PRINCIPAL UNIFICADO
@@ -875,16 +1126,27 @@ class VolumeScreenshotProcessor:
                 # 1) CALCULAR VOLÚMENES Y ESPESORES
                 self.calcular_volumenes(poligono_layer, tin_nuevo, tin_base, tabla, nombre_layer)
 
-                # 2) GENERAR PANTALLAZOS DE DIFERENCIA DEM
+                # 2) GENERAR PANTALLAZO DE DIFERENCIA DEM y PERFIL
                 if capa_fondo:
+                    # Obtener puntos del perfil ANTES de generar pantallazo
+                    punto_inicio_perfil, punto_fin_perfil = None, None
+                    
+                    # Buscar feature en tabla para P1-P4
+                    for feat in tabla.getFeatures():
+                        foto_field = feat["Foto"]
+                        if foto_field and (base in foto_field or f"F{base}" == foto_field):
+                            punto_inicio_perfil, punto_fin_perfil = self.calcular_linea_perfil(feat)
+                            break
+                    
                     # Calcular diferencia TIN nuevo vs DEM muro
                     diff_layer = self.calculate_difference(tin_nuevo, tin_base, nombre_layer)
                     if diff_layer:
-                        # Solo un pantallazo con prefijo "P" en carpeta Planos
+                        # Generar pantallazo CON línea de perfil
                         archivo_pantallazo = os.path.join(self.CARPETA_PLANOS, f"P{nombre_layer}.jpg")
                         
                         try:
-                            if self.generar_pantallazo_diferencia_dem(diff_layer, capa_fondo, archivo_pantallazo):
+                            if self.generar_pantallazo_diferencia_dem(diff_layer, capa_fondo, archivo_pantallazo, 
+                                                                       punto_inicio_perfil, punto_fin_perfil):
                                 pantallazos_exitosos += 1
                                 self.log_callback(f"✅ Pantallazo generado: {nombre_layer}")
                             
@@ -892,6 +1154,46 @@ class VolumeScreenshotProcessor:
                             
                         except Exception as e:
                             self.log_callback(f"❌ Error generando pantallazo para {nombre_layer}: {e}")
+                
+                # 2.5) GENERAR PERFIL TOPOGRÁFICO
+                try:
+                    # Crear carpeta si no existe
+                    if not os.path.exists(self.CARPETA_PERFILES):
+                        os.makedirs(self.CARPETA_PERFILES)
+                        self.log_callback(f"📁 Carpeta creada: {self.CARPETA_PERFILES}")
+                    
+                    # Obtener feature de la tabla para extraer P1-P4
+                    tabla_feature = None
+                    for feat in tabla.getFeatures():
+                        foto_field = feat["Foto"]
+                        if foto_field and (base in foto_field or f"F{base}" == foto_field):
+                            tabla_feature = feat
+                            break
+                    
+                    if tabla_feature:
+                        # Calcular línea de perfil
+                        punto_inicio, punto_fin = self.calcular_linea_perfil(tabla_feature)
+                        
+                        if punto_inicio and punto_fin:
+                            # Muestrear valores
+                            distancias, vals_dem, vals_tin = self.muestrear_perfil(
+                                tin_base, tin_nuevo, punto_inicio, punto_fin
+                            )
+                            
+                            if len(distancias) > 0:
+                                # Generar gráfico
+                                archivo_perfil = os.path.join(self.CARPETA_PERFILES, f"PERFIL_{base}.jpg")
+                                self.generar_grafico_perfil(
+                                    distancias, vals_dem, vals_tin, archivo_perfil, base
+                                )
+                            else:
+                                self.log_callback(f"⚠️ Sin datos válidos para perfil de {base}")
+                    else:
+                        self.log_callback(f"⚠️ No se encontró feature en tabla para {base}, perfil omitido")
+                        
+                except Exception as e:
+                    self.log_callback(f"⚠️ Error generando perfil para {base}: {e}")
+                    # No detener el proceso, continuar
 
                 # 3) PEGADO INCREMENTAL (TIN nuevo se pega sobre DEM muro)
                 self.overlay_patch_onto_dem(tin_nuevo, dem_name)

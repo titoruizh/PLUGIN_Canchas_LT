@@ -110,10 +110,12 @@ class ValidationProcessor:
             for f in os.listdir(self.DIR_IMG_ORIG):
                 shutil.copy2(os.path.join(self.DIR_IMG_ORIG, f), carpeta_b)
         
+        
         if os.path.exists(self.ORIG_GPKG):
             shutil.copy2(self.ORIG_GPKG, carpeta_b)
         
-        self.log_callback(f"📦 Backup completo creado en: {carpeta_b}")
+        # Silencioso: el backup se reporta al final
+        # self.log_callback(f"📦 Backup completo creado en: {carpeta_b}")
         return carpeta_b
 
     def respaldar_archivo(self, path, carpeta_b):
@@ -261,20 +263,18 @@ class ValidationProcessor:
         df.columns = self.COLUMNAS_REQUERIDAS
         return df
 
-    def validar_numeros(self, df):
-        """
-        Validación robusta que maneja strings, floats y valores NaN
-        """
+    def validar_coordenadas_csv(self, df, archivo="archivo"):
+        """Valida que las coordenadas tengan el formato correcto"""
         for idx, f in df.iterrows():
             try:
                 # Validar Norte
                 norte_val = f['norte']
                 if pd.isna(norte_val):
-                    self.log_callback(f"⚠️ Fila {idx}: Valor 'norte' vacío")
+                    self.log_callback(f"⚠️ [{archivo}] Fila {idx}: Valor 'norte' vacío")
                     return False
                 norte_str = str(int(float(norte_val))) if isinstance(norte_val, (int, float)) else str(norte_val).split('.')[0]
                 if not (norte_str.isdigit() and len(norte_str) == 7):
-                    self.log_callback(f"⚠️ Fila {idx}: 'norte' inválido: {norte_val} (debe ser 7 dígitos)")
+                    self.log_callback(f"⚠️ [{archivo}] Fila {idx}: 'norte' inválido: {norte_val} (debe ser 7 dígitos) - Fila eliminada")
                     return False
                 
                 # Validar Este
@@ -439,11 +439,11 @@ class ValidationProcessor:
             return {"ok": False, "comentarios": errores_faltantes, 
                    "coordenadas": df, "muro": None, "sector": None}
         
-        # Validación de números con manejo robusto
-        if not self.validar_numeros(df):
+        # Validación de coordenadas con nombre de archivo
+        if not self.validar_coordenadas_csv(df, archivo):
             # Intentar invertir columnas como solución
             inv = self.invertir_columnas(df)
-            if self.validar_numeros(inv):
+            if self.validar_coordenadas_csv(inv, archivo):
                 df = inv
                 comentarios.append('Coordenadas invertidas corregidas')
             else:
@@ -800,13 +800,14 @@ class ValidationProcessor:
                 if csv_normalizado and csv_normalizado.startswith("ARCHIVOS_NUBE/CSV-ASC/"):
                     nombre_archivo = csv_normalizado.replace("ARCHIVOS_NUBE/CSV-ASC/", "")
                     capa.changeAttributeValue(fid, idx_nom, nombre_archivo)
-                    cambios_realizados = True
+            cambios_realizados = True
             
             if cambios_realizados:
                 total_actualizados += 1
         
-        capa.commitChanges()
-        self.log_callback(f"📋 Normalización completada: {total_actualizados} registros actualizados")
+        capa.commitChanges()        
+        # Silencioso: no logear normalización (solo progreso visual)
+        # self.log_callback(f"📋 Normalización completada: {total_actualizados} registros actualizados")
 
     def procesar_archivos_y_validar(self, capa, carpeta_b):
         # Estadísticas de procesamiento
@@ -867,8 +868,9 @@ class ValidationProcessor:
                 continue
             
             fid = feats[base_limpio]
-            ruta_archivo = os.path.join(self.DIR_CSV_ORIG, arc)
-            self.log_callback(f"\n🔎 Procesando archivo: {arc}")
+            ruta_archivo = os.path.join(self.DIR_CSV_ORIG, arc)            
+            # Silencioso: no logear cada archivo individual
+            # self.log_callback(f"\n🔎 Procesando archivo: {arc}")
             
             # Actualizar progreso
             archivos_procesados += 1
@@ -1029,7 +1031,8 @@ class ValidationProcessor:
         """
         Normaliza nombres de archivos a mayúsculas y valida nomenclatura con GPKG
         """
-        self.log_callback("🔄 Iniciando normalización de nombres y validación de nomenclatura...")
+        # Silencioso: solo mostrar errores si los hay
+        # self.log_callback("🔄 Iniciando normalización de nombres y validación de nomenclatura...")
         
         # 1. Normalizar nombres de archivos a MAYÚSCULAS
         self.normalizar_nombres_archivos()
@@ -1069,7 +1072,7 @@ class ValidationProcessor:
     
     def actualizar_campos_gpkg_mayusculas(self, capa):
         """Actualiza los campos del GPKG para que coincidan con archivos normalizados"""
-        self.log_callback("🔄 Actualizando campos del GPKG a mayúsculas...")
+        # self.log_callback("🔄 Actualizando campos del GPKG a mayúsculas...")
         
         capa.startEditing()
         total_actualizados = 0
@@ -1142,7 +1145,7 @@ class ValidationProcessor:
                     total_actualizados += 1
             
             capa.commitChanges()
-            self.log_callback(f"✅ Campos del GPKG actualizados: {total_actualizados} registros")
+            # self.log_callback(f"✅ Campos del GPKG actualizados: {total_actualizados} registros")
             
         except Exception as e:
             capa.rollBack()
@@ -1177,7 +1180,7 @@ class ValidationProcessor:
     
     def validar_nomenclatura_con_gpkg(self, capa):
         """Valida que la nomenclatura de archivos coincida con datos del GPKG"""
-        self.log_callback("🔍 Validando nomenclatura con datos del GPKG...")
+        # self.log_callback("🔍 Validando nomenclatura con datos del GPKG...")
         
         errores_nomenclatura = []
         coincidencias = 0
@@ -1257,9 +1260,10 @@ class ValidationProcessor:
                 self.log_callback(f"⚠️ Error validando feature {feature.id()}: {e}")
         
         # Reportar resultados
-        self.log_callback(f"📊 Resultado validación nomenclatura:")
-        self.log_callback(f"   ✅ Coincidencias: {coincidencias}")
-        self.log_callback(f"   ❌ Errores: {len(errores_nomenclatura)}")
+        # Solo logear si hay errores
+        # self.log_callback(f"📊 Resultado validación nomenclatura:")
+        # self.log_callback(f"   ✅ Coincidencias: {coincidencias}")
+        # self.log_callback(f"   ❌ Errores: {len(errores_nomenclatura)}")
         
         if errores_nomenclatura:
             self.log_callback(f"\n🔍 ERRORES DE NOMENCLATURA:")
@@ -1308,7 +1312,7 @@ class ValidationProcessor:
         """Ejecutar todo el proceso de validación - MÉTODO PRINCIPAL"""
         try:
             self.progress_callback(5, "Iniciando validación completa...")
-            self.log_callback("🔍 Iniciando script de validación GIS completo...")
+            self.log_callback("🔍 Iniciando validación completa...")
             
             # Asegurar carpetas
             self.progress_callback(10, "Creando estructura de carpetas...")
@@ -1316,7 +1320,6 @@ class ValidationProcessor:
             
             # Copiar GPKG
             self.progress_callback(15, "Copiando GPKG original...")
-            self.log_callback("🔄 Copiando GPKG original a carpeta de procesados...")
             shutil.copy2(self.ORIG_GPKG, self.TMP_GPKG)
             
             # Cargar capa
@@ -1351,13 +1354,10 @@ class ValidationProcessor:
                         self.log_callback(f"   {adv}")
                 self.log_callback("="*70 + "\n")
             
-            # Agregar al proyecto si no existe
+            # Agregar al proyecto si no existe (sin log)
             project = QgsProject.instance()
             if not any(lyr.name() == self.NOMBRE_CAPA for lyr in project.mapLayers().values()):
                 project.addMapLayer(layer)
-                self.log_callback(f"✅ Capa '{self.NOMBRE_CAPA}' cargada desde copia temporal")
-            else:
-                self.log_callback(f"ℹ️ Capa '{self.NOMBRE_CAPA}' ya está cargada")
             
             # Backup completo
             self.progress_callback(40, "Creando backup completo...")
@@ -1372,7 +1372,7 @@ class ValidationProcessor:
             self.limpiar_archivos_auxiliares()
             
             self.progress_callback(100, "¡Validación completada!")
-            self.log_callback("🎉 Proceso GIS completado con validación espacial, backup y limpieza de auxiliares")
+            # Crear resumen final conciso (se genera en procesar_archivos_y_validar)
             
             return {
                 'success': True,
@@ -1412,26 +1412,5 @@ class ValidationProcessor:
             for archivo, error in stats['errores_por_archivo'].items():
                 self.log_callback(f"   • {archivo}: {error}")
         
-        # Archivos sin BD solo si existen
-        if stats['archivos_sin_bd']:
-            self.log_callback(f"\n⚠️ Sin registro en BD: {len(stats['archivos_sin_bd'])} archivos (copiados sin validar)")
-        
-        # Resumen de operaciones (solo si hubo actividad)
-        if any(counters.values()):
-            self.log_callback(f"\n📋 Operaciones realizadas:")
-            if counters['csv_copiados'] > 0:
-                self.log_callback(f"   • {counters['csv_copiados']} archivos CSV copiados")
-            if counters['jpg_copiados'] > 0:
-                self.log_callback(f"   • {counters['jpg_copiados']} imágenes JPG copiadas")
-            if counters['filas_filtradas'] > 0:
-                self.log_callback(f"   • {counters['filas_filtradas']} filas problemáticas filtradas (RTCM/inf/chequeo)")
-            if counters['auxiliares_eliminados'] > 0:
-                self.log_callback(f"   • {counters['auxiliares_eliminados']} archivos auxiliares eliminados")
-        
-        # Tasa de éxito
-        archivos_intentados = stats['archivos_exitosos'] + stats['archivos_con_errores']
-        if archivos_intentados > 0:
-            tasa = (stats['archivos_exitosos'] / archivos_intentados * 100)
-            self.log_callback(f"\n📈 Tasa de éxito: {tasa:.1f}%")
         
         self.log_callback("="*70)
