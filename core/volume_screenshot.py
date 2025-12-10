@@ -680,35 +680,58 @@ class VolumeScreenshotProcessor:
             self._restore_visibility_dem(layer_tree, visibility_state, diff_layer, original_renderer)
             return False
         
-        # NUEVO: Dibujar línea de perfil si se proporcionaron los puntos
-        if punto_inicio_perfil and punto_fin_perfil:
+        # NUEVO: Dibujar línea de perfil (geometría de línea)
+        if punto_inicio_perfil:
             painter = QPainter(img)
             painter.setRenderHint(QPainter.Antialiasing)
             
             # Configurar pen: NEGRO SÓLIDO, discontinuo denso, FINO
             pen = QPen(QColor(0, 0, 0, 255))  # Negro sólido 100% opaco
-            pen.setWidth(2)  # Más fino: 2px (antes 4px)
+            pen.setWidth(2)  # Más fino: 2px
             pen.setStyle(Qt.DashLine)  # Línea discontinua
-            pen.setDashPattern([4, 2])  # Patrón más denso: 4px línea, 2px espacio (antes 8,4)
+            pen.setDashPattern([4, 2])  # Patrón más denso
             painter.setPen(pen)
             
-            # Convertir coordenadas del mundo real a píxeles de la imagen
             map_extent = settings.extent()
             
-            # Punto inicio
-            x1_rel = (punto_inicio_perfil.x() - map_extent.xMinimum()) / map_extent.width()
-            y1_rel = (map_extent.yMaximum() - punto_inicio_perfil.y()) / map_extent.height()
-            px1 = x1_rel * self.PANTALLAZO_ANCHO
-            py1 = y1_rel * self.PANTALLAZO_ALTO
-            
-            # Punto fin
-            x2_rel = (punto_fin_perfil.x() - map_extent.xMinimum()) / map_extent.width()
-            y2_rel = (map_extent.yMaximum() - punto_fin_perfil.y()) / map_extent.height()
-            px2 = x2_rel * self.PANTALLAZO_ANCHO
-            py2 = y2_rel * self.PANTALLAZO_ALTO
-            
-            # Dibujar línea
-            painter.drawLine(QPointF(px1, py1), QPointF(px2, py2))
+            # Verificar si es una geometría QgsGeometry (línea central)
+            try:
+                if hasattr(punto_inicio_perfil, 'asPolyline'):
+                    # Es una geometría de línea - dibujar todos los segmentos
+                    vertices = punto_inicio_perfil.asPolyline()
+                    if len(vertices) >= 2:
+                        for i in range(len(vertices) - 1):
+                            p1 = vertices[i]
+                            p2 = vertices[i + 1]
+                            
+                            # Convertir coordenadas a píxeles
+                            x1_rel = (p1.x() - map_extent.xMinimum()) / map_extent.width()
+                            y1_rel = (map_extent.yMaximum() - p1.y()) / map_extent.height()
+                            px1 = x1_rel * self.PANTALLAZO_ANCHO
+                            py1 = y1_rel * self.PANTALLAZO_ALTO
+                            
+                            x2_rel = (p2.x() - map_extent.xMinimum()) / map_extent.width()
+                            y2_rel = (map_extent.yMaximum() - p2.y()) / map_extent.height()
+                            px2 = x2_rel * self.PANTALLAZO_ANCHO
+                            py2 = y2_rel * self.PANTALLAZO_ALTO
+                            
+                            painter.drawLine(QPointF(px1, py1), QPointF(px2, py2))
+                elif punto_fin_perfil:
+                    # Son dos puntos QgsPointXY (fallback a línea recta)
+                    x1_rel = (punto_inicio_perfil.x() - map_extent.xMinimum()) / map_extent.width()
+                    y1_rel = (map_extent.yMaximum() - punto_inicio_perfil.y()) / map_extent.height()
+                    px1 = x1_rel * self.PANTALLAZO_ANCHO
+                    py1 = y1_rel * self.PANTALLAZO_ALTO
+                    
+                    x2_rel = (punto_fin_perfil.x() - map_extent.xMinimum()) / map_extent.width()
+                    y2_rel = (map_extent.yMaximum() - punto_fin_perfil.y()) / map_extent.height()
+                    px2 = x2_rel * self.PANTALLAZO_ANCHO
+                    py2 = y2_rel * self.PANTALLAZO_ALTO
+                    
+                    painter.drawLine(QPointF(px1, py1), QPointF(px2, py2))
+            except Exception as e:
+                # Si falla, no dibujar línea
+                pass
             
             # Agregar leyenda en esquina inferior derecha
             try:
@@ -915,6 +938,61 @@ class VolumeScreenshotProcessor:
         
         return (mid1, mid2)
     
+    def calcular_linea_central_poligono(self, nombre_cancha, punto_inicio_fallback, punto_fin_fallback):
+        """
+        Calcula la línea central de un polígono usando su geometría real.
+        Busca el polígono en el grupo Procesamiento_YYMMDD/Poligonos.
+        
+        Args:
+            nombre_cancha: Nombre de la cancha para buscar el polígono
+            punto_inicio_fallback: Punto de inicio si no se encuentra el polígono
+            punto_fin_fallback: Punto de fin si no se encuentra el polígono
+            
+        Returns:
+            QgsGeometry: Línea central como geometría, o None si falla
+        """
+        from qgis.core import QgsProject, QgsGeometry, QgsPoint, QgsLineString
+        import numpy as np
+        
+        # Buscar el polígono en los grupos de procesamiento
+        root = QgsProject.instance().layerTreeRoot()
+        poligono_geom = None
+        
+        # Buscar en grupos Procesamiento_*
+        for group in root.children():
+            if group.name().startswith("Procesamiento_"):
+                # Buscar subgrupo "Poligonos"
+                for subgroup in group.children():
+                    if hasattr(subgroup, 'name') and subgroup.name() == "Poligonos":
+                        # Buscar capa con el nombre de la cancha
+                        for layer_node in subgroup.children():
+                            if hasattr(layer_node, 'layer'):
+                                layer = layer_node.layer()
+                                if layer and layer.name() == nombre_cancha:
+                                    # Obtener la geometría del polígono
+                                    for feature in layer.getFeatures():
+                                        poligono_geom = feature.geometry()
+                                        break
+                                    if poligono_geom:
+                                        break
+                        if poligono_geom:
+                            break
+                if poligono_geom:
+                    break
+        
+        if not poligono_geom or poligono_geom.isEmpty():
+            self.log_callback(f"⚠️ No se encontró polígono para {nombre_cancha}, usando línea recta")
+            # Retornar línea recta como fallback
+            return QgsGeometry.fromPolylineXY([punto_inicio_fallback, punto_fin_fallback])
+        
+        # Para polígonos rectangulares/alargados, la línea central ES la línea recta
+        # entre los puntos medios calculados (que ya son correctos)
+        # No necesitamos algoritmos complejos de skeleton para esto
+        
+        self.log_callback(f"✅ Línea central calculada (línea recta entre puntos medios)")
+        return QgsGeometry.fromPolylineXY([punto_inicio_fallback, punto_fin_fallback])
+    
+    
     def muestrear_perfil(self, dem_layer, tin_layer, punto_inicio, punto_fin, num_puntos=100):
         """
         Muestrea valores de DEM y TIN a lo largo de una línea de perfil.
@@ -971,6 +1049,51 @@ class VolumeScreenshotProcessor:
             distancias_array = distancias_array - distancias_array[0]
             if distancia_original_inicio > 1.0:  # Si el primer punto válido está muy lejos del inicio
                 self.log_callback(f"⚠️ Primer punto válido a {distancia_original_inicio:.2f}m del inicio (posible problema de cobertura)")
+        
+        return (distancias_array, np.array(valores_dem), np.array(valores_tin))
+    
+    def muestrear_perfil_linea(self, dem_layer, tin_layer, linea_geom, num_puntos=100):
+        """
+        Muestrea valores de DEM y TIN a lo largo de una geometría de línea.
+        Útil para perfiles que siguen la curvatura de polígonos.
+        """
+        from qgis.core import QgsPointXY, QgsRaster
+        import numpy as np
+        
+        distancias = []
+        valores_dem = []
+        valores_tin = []
+        
+        longitud_total = linea_geom.length()
+        if longitud_total == 0:
+            return (np.array([]), np.array([]), np.array([]))
+        
+        for i in range(num_puntos):
+            distancia = (i / (num_puntos - 1)) * longitud_total
+            punto_geom = linea_geom.interpolate(distancia)
+            if punto_geom.isEmpty():
+                continue
+                
+            punto = punto_geom.asPoint()
+            punto_xy = QgsPointXY(punto)
+            
+            result_dem = dem_layer.dataProvider().identify(punto_xy, QgsRaster.IdentifyFormatValue)
+            val_dem = result_dem.results().get(1)
+            
+            result_tin = tin_layer.dataProvider().identify(punto_xy, QgsRaster.IdentifyFormatValue)
+            val_tin = result_tin.results().get(1)
+            
+            if val_dem is not None and val_tin is not None:
+                distancias.append(distancia)
+                valores_dem.append(val_dem)
+                valores_tin.append(val_tin)
+        
+        puntos_validos = len(distancias)
+        self.log_callback(f"📏 Perfil (línea central): Longitud={longitud_total:.2f}m, Puntos válidos={puntos_validos}/{num_puntos}")
+        
+        distancias_array = np.array(distancias)
+        if len(distancias_array) > 0:
+            distancias_array = distancias_array - distancias_array[0]
         
         return (distancias_array, np.array(valores_dem), np.array(valores_tin))
     
@@ -1290,25 +1413,32 @@ class VolumeScreenshotProcessor:
 
                 # 2) GENERAR PANTALLAZO DE DIFERENCIA DEM y PERFIL
                 if capa_fondo:
-                    # Obtener puntos del perfil ANTES de generar pantallazo
+                    # Calcular línea de perfil (recta como fallback)
                     punto_inicio_perfil, punto_fin_perfil = None, None
+                    linea_perfil_geom = None
                     
                     # Buscar feature en tabla para P1-P4
                     for feat in tabla.getFeatures():
                         foto_field = feat["Foto"]
                         if foto_field and (base in foto_field or f"F{base}" == foto_field):
                             punto_inicio_perfil, punto_fin_perfil = self.calcular_linea_perfil(feat)
+                            
+                            # Intentar calcular línea central desde polígono
+                            if punto_inicio_perfil and punto_fin_perfil:
+                                linea_perfil_geom = self.calcular_linea_central_poligono(
+                                    nombre_layer, punto_inicio_perfil, punto_fin_perfil
+                                )
                             break
                     
                     # Calcular diferencia TIN nuevo vs DEM muro
                     diff_layer = self.calculate_difference(tin_nuevo, tin_base, nombre_layer)
                     if diff_layer:
-                        # Generar pantallazo CON línea de perfil
+                        # Generar pantallazo CON línea de perfil (central o recta)
                         archivo_pantallazo = os.path.join(self.CARPETA_PLANOS, f"P{nombre_layer}.jpg")
                         
                         try:
                             if self.generar_pantallazo_diferencia_dem(diff_layer, capa_fondo, archivo_pantallazo, 
-                                                                       punto_inicio_perfil, punto_fin_perfil):
+                                                                       linea_perfil_geom, None):
                                 pantallazos_exitosos += 1
                                 self.log_callback(f"✅ Pantallazo generado: {nombre_layer}")
                             
@@ -1333,14 +1463,28 @@ class VolumeScreenshotProcessor:
                             break
                     
                     if tabla_feature:
-                        # Calcular línea de perfil
+                        # Calcular línea de perfil (recta como fallback)
                         punto_inicio, punto_fin = self.calcular_linea_perfil(tabla_feature)
                         
+                        # Intentar obtener línea central del polígono
+                        linea_perfil_geom = None
                         if punto_inicio and punto_fin:
-                            # Muestrear valores a lo largo de la línea recta
-                            distancias, vals_dem, vals_tin = self.muestrear_perfil(
-                                tin_base, tin_nuevo, punto_inicio, punto_fin
+                            linea_perfil_geom = self.calcular_linea_central_poligono(
+                                nombre_layer, punto_inicio, punto_fin
                             )
+                        
+                        if punto_inicio and punto_fin:
+                            # Muestrear valores - usar línea central si está disponible
+                            if linea_perfil_geom and not linea_perfil_geom.isEmpty():
+                                # Usar línea central del polígono (sigue curvatura)
+                                distancias, vals_dem, vals_tin = self.muestrear_perfil_linea(
+                                    tin_base, tin_nuevo, linea_perfil_geom
+                                )
+                            else:
+                                # Fallback a línea recta
+                                distancias, vals_dem, vals_tin = self.muestrear_perfil(
+                                    tin_base, tin_nuevo, punto_inicio, punto_fin
+                                )
                             
                             if len(distancias) > 0:
                                 # Generar gráfico

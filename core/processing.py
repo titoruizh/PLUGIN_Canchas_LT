@@ -511,6 +511,191 @@ class ProcessingProcessor:
         debug_subgrupo("Poligonos", capas_poligonos, nombres_esperados)
         debug_subgrupo("Triangulaciones", capas_triangulaciones, nombres_esperados)
 
+    def generar_linea_central(self, poligono_layer, base, eje_central_group):
+        """
+        Generar línea central de un polígono usando PCA + intersecciones + suavizado.
+        Basado en el algoritmo de Tito para calcular el eje central de polígonos curvos.
+        """
+        try:
+            import numpy as np
+            
+            # Obtener geometría del polígono
+            try:
+                feat = next(poligono_layer.getFeatures())
+                geom = feat.geometry()
+            except Exception as e:
+                self.log_callback(f"❌ {base}: No se pudo obtener geometría ({e})")
+                return False
+            
+            # Validar geometría vacía
+            if not geom or geom.isEmpty():
+                self.log_callback(f"❌ {base}: Geometría vacía")
+                return False
+            
+            # Reparar geometría inválida
+            if not geom.isGeosValid():
+                self.log_callback(f"⚠️ {base}: Geometría inválida, intentando reparar...")
+                geom = geom.makeValid()
+                if not geom or geom.isEmpty():
+                    self.log_callback(f"❌ {base}: No se pudo reparar geometría")
+                    return False
+                if not geom.isGeosValid():
+                    self.log_callback(f"❌ {base}: Geometría sigue inválida después de reparar")
+                    return False
+                self.log_callback(f"✅ {base}: Geometría reparada exitosamente")
+            
+            # Extraer vértices del polígono
+            try:
+                if geom.isMultipart():
+                    parts = geom.asMultiPolygon()
+                    if not parts or len(parts) == 0:
+                        self.log_callback(f"❌ {base}: MultiPolygon vacío")
+                        return False
+                    poly = parts[0][0]
+                else:
+                    polygons = geom.asPolygon()
+                    if not polygons or len(polygons) == 0:
+                        self.log_callback(f"❌ {base}: Polygon vacío")
+                        return False
+                    poly = polygons[0]
+            except Exception as e:
+                self.log_callback(f"❌ {base}: Error extrayendo vértices ({e})")
+                return False
+            
+            # Validar número de vértices
+            if len(poly) < 4:
+                self.log_callback(f"❌ {base}: Polígono con solo {len(poly)} vértices (mínimo 4)")
+                return False
+            
+            # Convertir a numpy
+            try:
+                pts = np.array([[p.x(), p.y()] for p in poly])
+            except Exception as e:
+                self.log_callback(f"❌ {base}: Error convirtiendo a numpy ({e})")
+                return False
+            
+            # PCA para encontrar eje principal
+            try:
+                mean = pts.mean(axis=0)
+                centered = pts - mean
+                U, S, Vt = np.linalg.svd(centered)
+                axis = Vt[0]
+                perp = np.array([-axis[1], axis[0]])
+                proj = centered @ axis
+                minL, maxL = proj.min(), proj.max()
+            except Exception as e:
+                self.log_callback(f"❌ {base}: Error en PCA ({e})")
+                return False
+            
+            # Generar puntos centrales mediante intersecciones
+            samples = 150
+            central_points = []
+            
+            try:
+                for i in range(samples):
+                    t = minL + (maxL - minL) * i / (samples - 1)
+                    p0 = mean + axis * t
+                    p1 = p0 + perp * 9999
+                    p2 = p0 - perp * 9999
+                    cutline = QgsGeometry.fromPolylineXY([
+                        QgsPointXY(p1[0], p1[1]), QgsPointXY(p2[0], p2[1])
+                    ])
+                    inter = geom.intersection(cutline)
+                    
+                    # Manejar tanto LineString como MultiLineString
+                    if inter.type() == 1:  # LineString
+                        try:
+                            ls = inter.asPolyline()
+                            if len(ls) >= 2:
+                                pa = np.array([ls[0].x(), ls[0].y()])
+                                pb = np.array([ls[-1].x(), ls[-1].y()])
+                                mid = (pa + pb) / 2
+                                central_points.append(mid)
+                        except Exception:
+                            # Si falla asPolyline(), puede ser MultiLineString
+                            # Intentar obtener la línea más larga
+                            if inter.isMultipart():
+                                lines = inter.asMultiPolyline()
+                                if lines:
+                                    # Encontrar la línea más larga
+                                    longest_line = max(lines, key=lambda line: len(line))
+                                    if len(longest_line) >= 2:
+                                        pa = np.array([longest_line[0].x(), longest_line[0].y()])
+                                        pb = np.array([longest_line[-1].x(), longest_line[-1].y()])
+                                        mid = (pa + pb) / 2
+                                        central_points.append(mid)
+            except Exception as e:
+                self.log_callback(f"❌ {base}: Error generando intersecciones ({e})")
+                return False
+            
+            if len(central_points) < 2:
+                self.log_callback(f"❌ {base}: Solo {len(central_points)} puntos centrales (mínimo 2)")
+                return False
+            
+            central_points = np.array(central_points)
+            
+            # Suavizado con moving average
+            try:
+                def smooth(coords, window=9):
+                    res = []
+                    half = window // 2
+                    for i in range(len(coords)):
+                        start = max(0, i - half)
+                        end = min(len(coords), i + half)
+                        res.append(coords[start:end].mean(axis=0))
+                    return np.array(res)
+                
+                central_points = smooth(central_points, 9)
+                central_points = smooth(central_points, 9)
+            except Exception as e:
+                self.log_callback(f"⚠️ {base}: Error en suavizado, usando puntos sin suavizar ({e})")
+            
+            # Crear capa temporal
+            try:
+                vl = QgsVectorLayer(
+                    "LineString?crs=" + poligono_layer.crs().authid(),
+                    f"temp_{base}", "memory"
+                )
+                pr = vl.dataProvider()
+                feat_line = QgsFeature()
+                line_geom = QgsGeometry.fromPolylineXY(
+                    [QgsPointXY(p[0], p[1]) for p in central_points]
+                )
+                feat_line.setGeometry(line_geom)
+                pr.addFeature(feat_line)
+                vl.updateExtents()
+            except Exception as e:
+                self.log_callback(f"❌ {base}: Error creando capa temporal ({e})")
+                return False
+            
+            # Suavizado B-Spline con QGIS processing
+            try:
+                out = processing.run("qgis:smoothgeometry", {
+                    "INPUT": vl, "ITERATIONS": 5, "OFFSET": 0.3,
+                    "MAXANGLE": 180, "OUTPUT": "memory:"
+                })
+                final_layer = out["OUTPUT"]
+                final_layer.setName(base)
+                QgsProject.instance().addMapLayer(final_layer, False)
+                eje_central_group.addLayer(final_layer)
+                self.log_callback(f"✅ {base}: Línea central generada ({len(central_points)} puntos)")
+                return True
+            except Exception as e:
+                # Fallback: usar línea sin suavizado B-Spline
+                self.log_callback(f"⚠️ {base}: Error en B-Spline, usando línea sin suavizado final ({e})")
+                vl.setName(base)
+                QgsProject.instance().addMapLayer(vl, False)
+                eje_central_group.addLayer(vl)
+                self.log_callback(f"✅ {base}: Línea central generada (sin B-Spline, {len(central_points)} puntos)")
+                return True
+                
+        except Exception as e:
+            import traceback
+            error_details = traceback.format_exc()
+            self.log_callback(f"❌ {base}: Error crítico generando línea central: {e}")
+            self.log_callback(f"   Detalles: {error_details}")
+            return False
+
     # =========================
     # MÉTODO PRINCIPAL
     # =========================
@@ -539,6 +724,7 @@ class ProcessingProcessor:
             puntos_group = self.get_or_create_subgroup(group, "Puntos")
             poligonos_group = self.get_or_create_subgroup(group, "Poligonos")
             triangulaciones_group = self.get_or_create_subgroup(group, "Triangulaciones")
+            eje_central_group = self.get_or_create_subgroup(group, "Eje Central")
 
             # Obtener archivos a procesar (igual que el script original)
             archivos_procesar = []
@@ -584,6 +770,36 @@ class ProcessingProcessor:
                 self.log_callback(f"⚠️ No se encontró la capa '{self.NOMBRE_CAPA}' para apagar")
 
             self.log_callback("⚙️ Subgrupos creados: Puntos, Poligonos y Triangulaciones (todos apagados y contraídos)")
+
+            # NUEVO: Generar líneas centrales para todos los polígonos
+            self.progress_callback(85, "Generando líneas centrales...")
+            self.log_callback("🔄 Generando líneas centrales de polígonos...")
+            
+            lineas_generadas = 0
+            lineas_fallidas = 0
+            total_poligonos = 0
+            nombres_fallidos = []
+            
+            # Iterar sobre todas las capas en el grupo Poligonos
+            for child in poligonos_group.children():
+                if hasattr(child, 'layer') and child.layer() is not None:
+                    total_poligonos += 1
+                    poligono_layer = child.layer()
+                    base = poligono_layer.name()
+                    
+                    if self.generar_linea_central(poligono_layer, base, eje_central_group):
+                        lineas_generadas += 1
+                    else:
+                        lineas_fallidas += 1
+                        nombres_fallidos.append(base)
+            
+            # Resumen detallado
+            if lineas_fallidas == 0:
+                self.log_callback(f"✅ Líneas centrales: {lineas_generadas}/{total_poligonos} generadas exitosamente")
+            else:
+                self.log_callback(f"⚠️ Líneas centrales: {lineas_generadas}/{total_poligonos} generadas, {lineas_fallidas} fallidas")
+                if nombres_fallidos:
+                    self.log_callback(f"   Fallidas: {', '.join(nombres_fallidos)}")
 
             # Generar resumen final (igual que el script original)
             self.progress_callback(90, "Generando resumen...")
