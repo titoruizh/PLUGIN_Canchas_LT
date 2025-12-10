@@ -940,56 +940,52 @@ class VolumeScreenshotProcessor:
     
     def calcular_linea_central_poligono(self, nombre_cancha, punto_inicio_fallback, punto_fin_fallback):
         """
-        Calcula la línea central de un polígono usando su geometría real.
-        Busca el polígono en el grupo Procesamiento_YYMMDD/Poligonos.
+        Busca y retorna la línea central pre-generada del subgrupo 'Eje Central'.
+        Si no existe, usa línea recta como fallback.
         
         Args:
-            nombre_cancha: Nombre de la cancha para buscar el polígono
-            punto_inicio_fallback: Punto de inicio si no se encuentra el polígono
-            punto_fin_fallback: Punto de fin si no se encuentra el polígono
+            nombre_cancha: Nombre de la cancha para buscar la línea central
+            punto_inicio_fallback: Punto de inicio si no se encuentra la línea
+            punto_fin_fallback: Punto de fin si no se encuentra la línea
             
         Returns:
-            QgsGeometry: Línea central como geometría, o None si falla
+            QgsGeometry: Línea central como geometría, o línea recta si no existe
         """
-        from qgis.core import QgsProject, QgsGeometry, QgsPoint, QgsLineString
-        import numpy as np
+        from qgis.core import QgsProject, QgsGeometry
         
-        # Buscar el polígono en los grupos de procesamiento
+        # Buscar la línea central en el grupo Procesamiento_*/Eje Central
         root = QgsProject.instance().layerTreeRoot()
-        poligono_geom = None
+        linea_central_geom = None
         
         # Buscar en grupos Procesamiento_*
         for group in root.children():
             if group.name().startswith("Procesamiento_"):
-                # Buscar subgrupo "Poligonos"
+                # Buscar subgrupo "Eje Central"
                 for subgroup in group.children():
-                    if hasattr(subgroup, 'name') and subgroup.name() == "Poligonos":
+                    if hasattr(subgroup, 'name') and subgroup.name() == "Eje Central":
                         # Buscar capa con el nombre de la cancha
                         for layer_node in subgroup.children():
                             if hasattr(layer_node, 'layer'):
                                 layer = layer_node.layer()
                                 if layer and layer.name() == nombre_cancha:
-                                    # Obtener la geometría del polígono
+                                    # Obtener la geometría de la línea central
                                     for feature in layer.getFeatures():
-                                        poligono_geom = feature.geometry()
+                                        linea_central_geom = feature.geometry()
                                         break
-                                    if poligono_geom:
+                                    if linea_central_geom:
                                         break
-                        if poligono_geom:
+                        if linea_central_geom:
                             break
-                if poligono_geom:
+                if linea_central_geom:
                     break
         
-        if not poligono_geom or poligono_geom.isEmpty():
-            self.log_callback(f"⚠️ No se encontró polígono para {nombre_cancha}, usando línea recta")
-            # Retornar línea recta como fallback
-            return QgsGeometry.fromPolylineXY([punto_inicio_fallback, punto_fin_fallback])
+        # Si encontramos la línea central, usarla
+        if linea_central_geom and not linea_central_geom.isEmpty():
+            self.log_callback(f"✅ Línea central cargada desde 'Eje Central' ({nombre_cancha})")
+            return linea_central_geom
         
-        # Para polígonos rectangulares/alargados, la línea central ES la línea recta
-        # entre los puntos medios calculados (que ya son correctos)
-        # No necesitamos algoritmos complejos de skeleton para esto
-        
-        self.log_callback(f"✅ Línea central calculada (línea recta entre puntos medios)")
+        # Fallback: línea recta entre puntos medios
+        self.log_callback(f"⚠️ No se encontró línea central para {nombre_cancha}, usando línea recta")
         return QgsGeometry.fromPolylineXY([punto_inicio_fallback, punto_fin_fallback])
     
     
