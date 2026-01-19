@@ -259,7 +259,7 @@ Espesor Máx:    +3.78 m
 ### **🗂️ Reporte Final**
 
 
-<img width="631" height="685" alt="SS reporte" src="https://github.com/user-attachments/assets/8cdd6986-8eb5-4ac1-b6fb-cb7f42d963ab" />
+<img width="631" height="685" alt="SS reporte" src="https://github.com/user-attachments/assets/a43371bf-931d-4bc3-ae75-ce7834c85ae7" />
 
 
 ---
