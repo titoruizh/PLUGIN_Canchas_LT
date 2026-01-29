@@ -6,6 +6,7 @@ from qgis.PyQt.QtWidgets import (QDialog, QTabWidget, QVBoxLayout, QHBoxLayout,
                                 QPushButton, QTextEdit, QProgressBar, QLabel, 
                                 QLineEdit, QFileDialog)
 from .gui.tabs.validation_tab import ValidationTab
+from .gui.tabs.processing_tab import ProcessingTab
 
 class CanchasDialog(QDialog):
     """Diálogo principal del plugin con pestañas reorganizado"""
@@ -51,7 +52,13 @@ class CanchasDialog(QDialog):
         self.validation_tab.progress_signal.connect(self.update_progress)
         self.tab_widget.addTab(self.validation_tab, "1. Validación")
         
-        self.create_processing_tab()      # Pestaña 2
+        # Pestaña 2: Procesamiento (Refactorizada)
+        self.processing_tab = ProcessingTab()
+        self.processing_tab.log_signal.connect(self.log_message)
+        self.processing_tab.progress_signal.connect(self.update_progress)
+        self.processing_tab.execute_signal.connect(self.ejecutar_procesamiento_bridge)
+        self.tab_widget.addTab(self.processing_tab, "2. Procesamiento")
+        
         self.create_analysis_tab()        # Pestaña 3 (con sub-pestañas)
         self.create_reports_tab()         # Pestaña 4 (Datos Reporte)
         
@@ -78,59 +85,6 @@ class CanchasDialog(QDialog):
         self.setLayout(layout)
     
     
-    def create_processing_tab(self):
-        """Pestaña 2: Procesamiento (SIN CAMBIOS)"""
-        tab = QtWidgets.QWidget()
-        layout = QVBoxLayout()
-        
-        # Título y descripción
-        title = QLabel("🗺️ PROCESAMIENTO ESPACIAL")
-        title.setStyleSheet("font-weight: bold; font-size: 14px; color: #F18F01;")
-        layout.addWidget(title)
-        
-        desc = QLabel("Genera capas de puntos, polígonos y triangulaciones a partir de archivos validados")
-        desc.setStyleSheet("color: gray; margin-bottom: 10px;")
-        layout.addWidget(desc)
-        
-        # Grupo de salidas esperadas
-        output_group = QtWidgets.QGroupBox("📤 Salidas que se generarán")
-        output_layout = QVBoxLayout()
-        
-        outputs_info = QLabel("""• Grupo: Procesamiento_YYMMDD (contraído y apagado)
-    └── Puntos/ (capas de puntos de archivos CSV)
-    └── Poligonos/ (concave hulls de CSV, polígonos suavizados de ASC)
-    └── Triangulaciones/ (TIN recortados de CSV, rasters ASC)""")
-        outputs_info.setStyleSheet("font-family: 'Courier New'; color: #555; background-color: #f8f8f8; padding: 10px; border: 1px solid #ddd;")
-        output_layout.addWidget(outputs_info)
-        
-        output_group.setLayout(output_layout)
-        layout.addWidget(output_group)
-        
-        layout.addStretch()
-        
-        # Botón ejecutar con estilo
-        self.btn_processing = QPushButton("⚙️ Generar Capas Espaciales")
-        self.btn_processing.setStyleSheet("""
-            QPushButton {
-                background-color: #F18F01; 
-                color: white; 
-                font-weight: bold; 
-                padding: 10px; 
-                border: none; 
-                border-radius: 5px;
-            }
-            QPushButton:hover {
-                background-color: #9c5d03;
-            }
-            QPushButton:pressed {
-                background-color: #164B73;
-            }
-        """)
-        self.btn_processing.clicked.connect(self.ejecutar_procesamiento)
-        layout.addWidget(self.btn_processing)
-        
-        tab.setLayout(layout)
-        self.tab_widget.addTab(tab, "2. Procesamiento")
 
     def create_analysis_tab(self):
         """Pestaña 3: Análisis Completo (NUEVA con sub-pestañas)"""
@@ -735,58 +689,20 @@ class CanchasDialog(QDialog):
         
         self.resample_algorithm.setToolTip(tooltips.get(algorithm, "Algoritmo de remuestreo para alinear rasters"))
         
-    def ejecutar_procesamiento(self):
-        """Ejecutar proceso de procesamiento espacial"""
-        # Verificar que PROC_ROOT esté configurado
-        if not self.proc_root.text().strip():
-            self.log_message("❌ Error: Debe configurar la carpeta de procesamiento")
-            return
-
-        # Mostrar progreso
-        self.progress_bar.setVisible(True)
-        self.progress_bar.setValue(0)
+    def ejecutar_procesamiento_bridge(self):
+        """Puente para ejecutar procesamiento inyectando proc_root"""
+        # Obtener proc_root desde la pestaña de validación (via propiedad)
+        proc_root_path = self.proc_root.text()
         
-        self.log_message("⚙️ Iniciando procesamiento espacial...")
-        self.log_message(f"📁 PROC_ROOT: {self.proc_root.text()}")
-        # Parámetros fijos de procesamiento optimizados (configurables en código)
-        pixel_size = 0.1  # Resolución TIN en metros
-        suavizado_tolerance = 1.0  # Tolerancia suavizado ASC en metros  
-        min_dist_vertices = 2.0  # Distancia mínima entre vértices en metros
-        self.log_message(f"🔧 Píxel TIN: {pixel_size} metros")
-        self.log_message(f"🎯 Tolerancia suavizado: {suavizado_tolerance} metros")
-        self.log_message(f"📏 Distancia mínima vértices: {min_dist_vertices} metros")
+        if not self.progress_bar.isVisible():
+            self.progress_bar.setVisible(True)
+            
+        success = self.processing_tab.ejecutar_procesamiento(proc_root_path)
         
-        try:
-            # Importar el procesador
-            from .core.processing import ProcessingProcessor
-            
-            # Crear procesador con parámetros optimizados
-            processor = ProcessingProcessor(
-                proc_root=self.proc_root.text(),
-                pixel_size=pixel_size,
-                suavizado_tolerance=suavizado_tolerance,
-                min_dist_vertices=min_dist_vertices,
-                progress_callback=self.update_progress,
-                log_callback=self.log_message
-            )
-            
-            # Ejecutar procesamiento completo
-            resultado = processor.ejecutar_procesamiento_completo()
-            
-            if resultado['success']:
-                self.log_message("🎉 ¡Procesamiento espacial completado exitosamente!")
-                self.log_message(f"📊 {resultado.get('total_archivos', 0)} archivos procesados")
-                self.log_message(f"📁 Grupo creado: {resultado.get('group_name', 'N/A')}")
-                self.save_settings()
-            else:
-                self.log_message(f"❌ Error: {resultado['message']}")
-                if 'details' in resultado:
-                    self.log_message("📋 Ver detalles del error arriba")
-                
-        except Exception as e:
-            self.log_message(f"❌ Error inesperado: {e}")
-        finally:
-            self.progress_bar.setVisible(False)
+        if success:
+            self.save_settings()
+        
+        self.progress_bar.setVisible(False)
         
     def ejecutar_tabla(self):
         """Ejecutar proceso de creación de tabla base"""
