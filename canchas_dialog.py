@@ -5,6 +5,7 @@ from qgis.PyQt.QtCore import pyqtSignal, QThread, QSettings, QTime
 from qgis.PyQt.QtWidgets import (QDialog, QTabWidget, QVBoxLayout, QHBoxLayout, 
                                 QPushButton, QTextEdit, QProgressBar, QLabel, 
                                 QLineEdit, QFileDialog)
+from .gui.tabs.validation_tab import ValidationTab
 
 class CanchasDialog(QDialog):
     """Diálogo principal del plugin con pestañas reorganizado"""
@@ -14,6 +15,22 @@ class CanchasDialog(QDialog):
         self.setupUi()
         self.init_connections()
         self.load_settings()
+        
+    @property
+    def proc_root(self):
+        return self.validation_tab.proc_root
+        
+    @property
+    def gpkg_path(self):
+        return self.validation_tab.gpkg_path
+        
+    @property
+    def csv_folder(self):
+        return self.validation_tab.csv_folder
+        
+    @property
+    def img_folder(self):
+        return self.validation_tab.img_folder
         
     def setupUi(self):
         """Crear la interfaz con pestañas reorganizada (1-2-3-4)"""
@@ -27,7 +44,13 @@ class CanchasDialog(QDialog):
         self.tab_widget = QTabWidget()
         
         # Crear las pestañas principales
-        self.create_validation_tab()      # Pestaña 1
+        # Crear las pestañas principales
+        # Pestaña 1: Validación (Refactorizada)
+        self.validation_tab = ValidationTab()
+        self.validation_tab.log_signal.connect(self.log_message)
+        self.validation_tab.progress_signal.connect(self.update_progress)
+        self.tab_widget.addTab(self.validation_tab, "1. Validación")
+        
         self.create_processing_tab()      # Pestaña 2
         self.create_analysis_tab()        # Pestaña 3 (con sub-pestañas)
         self.create_reports_tab()         # Pestaña 4 (Datos Reporte)
@@ -54,185 +77,6 @@ class CanchasDialog(QDialog):
         
         self.setLayout(layout)
     
-    def create_validation_tab(self):
-        """Pestaña 1: Validación (SIN CAMBIOS)"""
-        tab = QtWidgets.QWidget()
-        layout = QVBoxLayout()
-        
-        # Título y descripción con estilo
-        title = QLabel("📋 VALIDACIÓN DE ARCHIVOS")
-        title.setStyleSheet("font-weight: bold; font-size: 14px; color: #F18F01;")
-        layout.addWidget(title)
-        
-        desc = QLabel("Valida archivos CSV/ASC espacialmente y los prepara para procesamiento")
-        desc.setStyleSheet("color: gray; margin-bottom: 10px;")
-        layout.addWidget(desc)
-        
-        # Grupo de carpeta principal
-        main_group = QtWidgets.QGroupBox("📁 CARPETA PRINCIPAL DE TRABAJO")
-        main_layout = QVBoxLayout()
-        
-        # PROC_ROOT con estilo
-        proc_layout = QHBoxLayout()
-        proc_layout.addWidget(QLabel("Carpeta Procesamiento (PROC_ROOT):"))
-        self.proc_root = QLineEdit()
-        self.proc_root.setPlaceholderText("E:\\CANCHAS_QFIELD\\QGIS PROCESAMIENTO\\Archivos Procesados TERRENO")
-        self.proc_root.setText(r"E:\CANCHAS_QFIELD\QGIS PROCESAMIENTO\Archivos Procesados TERRENO")
-        self.proc_root.setStyleSheet("padding: 5px; border: 1px solid #F18F01; border-radius: 3px;")
-        proc_layout.addWidget(self.proc_root)
-        btn_proc = QPushButton("📁")
-        btn_proc.setMaximumWidth(40)
-        btn_proc.setStyleSheet("""
-            QPushButton {
-                background-color: #F18F01; 
-                color: white; 
-                border: none; 
-                border-radius: 3px; 
-                padding: 5px;
-            }
-            QPushButton:hover {
-                background-color: #9c5d03;
-            }
-        """)
-        btn_proc.clicked.connect(lambda: self.select_folder(self.proc_root))
-        proc_layout.addWidget(btn_proc)
-        main_layout.addLayout(proc_layout)
-        
-        # Info sobre carpetas que se crearán
-        carpetas_info = QLabel("""📤 Carpetas que se crearán automáticamente:
-    • CSV-ASC (archivos procesados)    • IMAGENES (fotos con prefijo F)
-    • XML (archivos LandXML)          • Planos (pantallazos JPG)
-    • backups (respaldos de originales)""")
-        carpetas_info.setStyleSheet("color: #666; background-color: #e8f5f3; padding: 10px; border: 1px solid #F18F01; border-radius: 3px; margin: 5px 0;")
-        main_layout.addWidget(carpetas_info)
-        
-        main_group.setLayout(main_layout)
-        layout.addWidget(main_group)
-        
-        # Grupo de archivos originales
-        orig_group = QtWidgets.QGroupBox("📥 ARCHIVOS ORIGINALES")
-        orig_layout = QVBoxLayout()
-        
-        # GPKG original
-        gpkg_layout = QHBoxLayout()
-        gpkg_layout.addWidget(QLabel("GPKG Original:"))
-        self.gpkg_path = QLineEdit()
-        self.gpkg_path.setPlaceholderText("Ruta al archivo Levantamientos.gpkg")
-        self.gpkg_path.setStyleSheet("padding: 5px; border: 1px solid #ccc; border-radius: 3px;")
-        gpkg_layout.addWidget(self.gpkg_path)
-        btn_gpkg = QPushButton("📁")
-        btn_gpkg.setMaximumWidth(40)
-        btn_gpkg.setStyleSheet("""
-            QPushButton {
-                background-color: #666; 
-                color: white; 
-                border: none; 
-                border-radius: 3px; 
-                padding: 5px;
-            }
-            QPushButton:hover {
-                background-color: #555;
-            }
-        """)
-        btn_gpkg.clicked.connect(lambda: self.select_file(self.gpkg_path, "GPKG (*.gpkg)"))
-        gpkg_layout.addWidget(btn_gpkg)
-        orig_layout.addLayout(gpkg_layout)
-        
-        # Carpeta CSV-ASC
-        csv_layout = QHBoxLayout()
-        csv_layout.addWidget(QLabel("Carpeta CSV-ASC:"))
-        self.csv_folder = QLineEdit()
-        self.csv_folder.setPlaceholderText("Carpeta con archivos CSV y ASC originales")
-        self.csv_folder.setStyleSheet("padding: 5px; border: 1px solid #ccc; border-radius: 3px;")
-        csv_layout.addWidget(self.csv_folder)
-        btn_csv = QPushButton("📁")
-        btn_csv.setMaximumWidth(40)
-        btn_csv.setStyleSheet("""
-            QPushButton {
-                background-color: #666; 
-                color: white; 
-                border: none; 
-                border-radius: 3px; 
-                padding: 5px;
-            }
-            QPushButton:hover {
-                background-color: #555;
-            }
-        """)
-        btn_csv.clicked.connect(lambda: self.select_folder(self.csv_folder))
-        csv_layout.addWidget(btn_csv)
-        orig_layout.addLayout(csv_layout)
-        
-        # Carpeta imágenes
-        img_layout = QHBoxLayout()
-        img_layout.addWidget(QLabel("Carpeta Imágenes:"))
-        self.img_folder = QLineEdit()
-        self.img_folder.setPlaceholderText("Carpeta con archivos JPG originales")
-        self.img_folder.setStyleSheet("padding: 5px; border: 1px solid #ccc; border-radius: 3px;")
-        img_layout.addWidget(self.img_folder)
-        btn_img = QPushButton("📁")
-        btn_img.setMaximumWidth(40)
-        btn_img.setStyleSheet("""
-            QPushButton {
-                background-color: #666; 
-                color: white; 
-                border: none; 
-                border-radius: 3px; 
-                padding: 5px;
-            }
-            QPushButton:hover {
-                background-color: #555;
-            }
-        """)
-        btn_img.clicked.connect(lambda: self.select_folder(self.img_folder))
-        img_layout.addWidget(btn_img)
-        orig_layout.addLayout(img_layout)
-        
-        orig_group.setLayout(orig_layout)
-        layout.addWidget(orig_group)
-        
-        # Grupo de validaciones que se realizarán
-        validation_group = QtWidgets.QGroupBox("🔍 Validaciones que se realizarán")
-        validation_layout = QVBoxLayout()
-        
-        validations_info = QLabel("""ESPACIALES: Intersección con polígonos de muros y sectores
-    FORMATO: Estructura de columnas y tipos de datos
-    COORDENADAS: Validación de rangos Norte/Este/Cota  
-    DEM: Comparación de cotas contra modelos digitales
-    GEOMETRÍA: Generación de ConcaveHull para archivos CSV
-    ARCHIVOS: Conversión de formatos y limpieza de nombres""")
-        validations_info.setStyleSheet("font-family: 'Courier New'; color: #555; background-color: #f0f8f7; padding: 10px; border: 1px solid #F18F01; border-radius: 3px;")
-        validation_layout.addWidget(validations_info)
-        
-        validation_group.setLayout(validation_layout)
-        layout.addWidget(validation_group)
-        
-        layout.addStretch()
-        
-        # Botón ejecutar con estilo mejorado
-        self.btn_validation = QPushButton("🔍 Ejecutar Validación Completa")
-        self.btn_validation.setStyleSheet("""
-            QPushButton {
-                background-color: #F18F01; 
-                color: white; 
-                font-weight: bold; 
-                padding: 12px; 
-                border: none; 
-                border-radius: 5px;
-                font-size: 13px;
-            }
-            QPushButton:hover {
-                background-color: #9c5d03;
-            }
-            QPushButton:pressed {
-                background-color: #0F6B5F;
-            }
-        """)
-        self.btn_validation.clicked.connect(self.ejecutar_validacion)
-        layout.addWidget(self.btn_validation)
-        
-        tab.setLayout(layout)
-        self.tab_widget.addTab(tab, "1. Validación")
     
     def create_processing_tab(self):
         """Pestaña 2: Procesamiento (SIN CAMBIOS)"""
@@ -820,56 +664,11 @@ class CanchasDialog(QDialog):
     # MÉTODOS EJECUTAR (SIN CAMBIOS - TODA LA FUNCIONALIDAD INTACTA)
     # ===================================================================
     
-    def ejecutar_validacion(self):
-        """Ejecutar proceso de validación completo"""
-        # Verificar que PROC_ROOT esté configurado
-        if not self.proc_root.text().strip():
-            self.log_message("❌ Error: Debe configurar la carpeta de procesamiento (PROC_ROOT)")
-            return
-            
-        # Verificar que existan las rutas originales
-        """Ejecuta el proceso de validación completo"""
-        if not self.proc_root.text() or not self.gpkg_path.text() or not self.csv_folder.text() or not self.img_folder.text():
-            self.log_message("⚠️ Por favor complete todos los campos requeridos")
-            return
-        
-        self.progress_bar.setVisible(True)
-        self.progress_bar.setValue(0)
-        
-        try:
-            from .core.validation import ValidationProcessor
-            
-            # Crear procesador con callbacks
-            processor = ValidationProcessor(
-                proc_root=self.proc_root.text(),
-                orig_gpkg=self.gpkg_path.text(),
-                dir_csv_orig=self.csv_folder.text(),
-                dir_img_orig=self.img_folder.text(),
-                progress_callback=self.update_progress,
-                log_callback=self.log_message
-            )
-            
-            # Ejecutar validación completa
-            resultado = processor.ejecutar_validacion_completa()
-            
-            if resultado['success']:
-                self.log_message("🎉 ¡Validación completada exitosamente!")
-                self.log_message(f"📦 Backup creado en: {resultado.get('backup_folder', 'N/A')}")
-                self.save_settings()
-            else:
-                self.log_message(f"❌ Error: {resultado['message']}")
-                if 'details' in resultado:
-                    self.log_message("📋 Ver detalles del error arriba")
-                
-        except ImportError as e:
-            self.log_message(f"❌ Error: No se pudo importar el módulo de validación: {e}")
-        except Exception as e:
-            self.log_message(f"❌ Error inesperado: {e}")
-        finally:
-            self.progress_bar.setVisible(False)
 
     def update_progress(self, value, message=""):
         """Callback para actualizar progreso"""
+        if not self.progress_bar.isVisible():
+            self.progress_bar.setVisible(True)
         self.progress_bar.setValue(value)
         # No logear mensajes rutinarios de progreso - solo actualizar barra
     
