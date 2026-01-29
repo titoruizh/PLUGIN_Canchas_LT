@@ -858,13 +858,23 @@ class VolumeScreenshotProcessor:
 
     def cleanup_temp_files(self):
         """Elimina archivos temporales creados durante el proceso."""
+        deleted_count = 0
+        error_count = 0
+        
         for temp_file in self.temp_files:
             try:
                 if os.path.exists(temp_file):
                     os.remove(temp_file)
-                    self.log_callback(f"🗑️ Archivo temporal eliminado: {os.path.basename(temp_file)}")
-            except Exception as e:
-                self.log_callback(f"⚠️ No se pudo eliminar archivo temporal {temp_file}: {str(e)}")
+                    deleted_count += 1
+            except Exception:
+                error_count += 1
+        
+        if deleted_count > 0:
+            self.log_callback(f"🗑️ Se eliminaron {deleted_count} archivos temporales.")
+        
+        if error_count > 0:
+            self.log_callback(f"⚠️ No se pudieron eliminar {error_count} archivos temporales (bloqueados por QGIS). Se eliminarán al cerrar.")
+            
         self.temp_files.clear()
 
     # ===========================================
