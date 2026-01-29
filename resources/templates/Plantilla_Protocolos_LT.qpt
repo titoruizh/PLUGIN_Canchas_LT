@@ -1410,7 +1410,7 @@
      <Option type="Map" name="properties">
       <Option type="Map" name="dataDefinedSource">
        <Option type="bool" name="active" value="true"/>
-       <Option type="QString" name="expression" value="'C:/Users/LT_Gabinete_1/AppData/Roaming/QGIS/QGIS3/profiles/default/python/plugins/PLUGIN_Canchas_Las_Tortolas/resources/firmas/Gastón Castillo.png'"/>
+       <Option type="QString" name="expression" value="'C:/Users/LT_Gabinete_1/AppData/Roaming/QGIS/QGIS3/profiles/default/python/plugins/PLUGIN_Canchas_Las_Tortolas/resources/firmas/Jonathan Quijada.png'"/>
        <Option type="int" name="type" value="3"/>
       </Option>
      </Option>
@@ -2566,7 +2566,7 @@
    </customproperties>
   </LayoutObject>
  </LayoutItem>
- <LayoutItem marginY="0" frameJoinStyle="miter" position="91.5126,240.146,mm" itemRotation="0" outlineWidthM="0.3,mm" labelText="Gastón Castillo" blendMode="0" visibility="1" zValue="42" valign="32" frame="false" uuid="{6022b12b-b490-4441-8117-e24e37ee2266}" halign="1" size="59.0126,7.64774,mm" referencePoint="0" groupUuid="" htmlState="0" type="65641" positionOnPage="91.5126,240.146,mm" marginX="0" opacity="1" templateUuid="{6022b12b-b490-4441-8117-e24e37ee2266}" positionLock="false" background="false" excludeFromExports="0" id="">
+ <LayoutItem marginY="0" frameJoinStyle="miter" position="91.5126,240.146,mm" itemRotation="0" outlineWidthM="0.3,mm" labelText="Jonathan Quijada" blendMode="0" visibility="1" zValue="42" valign="32" frame="false" uuid="{6022b12b-b490-4441-8117-e24e37ee2266}" halign="1" size="59.0126,7.64774,mm" referencePoint="0" groupUuid="" htmlState="0" type="65641" positionOnPage="91.5126,240.146,mm" marginX="0" opacity="1" templateUuid="{6022b12b-b490-4441-8117-e24e37ee2266}" positionLock="false" background="false" excludeFromExports="0" id="">
   <FrameColor green="0" alpha="255" blue="0" red="0"/>
   <BackgroundColor green="255" alpha="255" blue="255" red="255"/>
   <LayoutObject>

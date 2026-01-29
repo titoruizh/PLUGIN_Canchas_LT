@@ -454,6 +454,7 @@ class ValidationProcessor:
         
         f = next(capa.getFeatures(QgsFeatureRequest(fid)))
         muro, sector = f['Muro'], f['Sector']
+        nuevo_muro = muro  # Inicializar antes del try-except
         pts = [QgsGeometry.fromPointXY(QgsPointXY(float(r['este']),float(r['norte'])))
                for _,r in df.iterrows()]
         
@@ -834,6 +835,15 @@ class ValidationProcessor:
             for f in capa.getFeatures()
             if f[self.COLUMNA_NOMBRE] and not f[self.COLUMNA_PROCESADO]
         }
+        
+        # Verificar si hay archivos pendientes de procesar
+        if not feats:
+            total_registros = sum(1 for f in capa.getFeatures() if f[self.COLUMNA_NOMBRE])
+            self.log_callback(f"⚠️ No hay archivos pendientes de procesar.")
+            self.log_callback(f"📋 Total de registros en BD: {total_registros}")
+            self.log_callback(f"✅ Todos los archivos ya están marcados como 'Procesado'")
+            self.log_callback(f"\n💡 Para reprocesar, desmarca la columna 'Procesado' en el GeoPackage")
+            return self.stats_procesamiento
         
         try:
             capa_muros = QgsProject.instance().mapLayersByName('Poligonos')[0]
