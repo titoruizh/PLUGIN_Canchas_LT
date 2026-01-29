@@ -98,7 +98,7 @@ class ProcessingTab(QWidget):
         self.emit_log(f"📁 PROC_ROOT: {proc_root}")
         
         # Parámetros fijos de procesamiento optimizados (configurables en código si fuese necesario)
-        pixel_size = 0.1  # Resolución TIN en metros
+        pixel_size = 0.25  # Resolución TIN en metros (Estándar 25cm)
         suavizado_tolerance = 1.0  # Tolerancia suavizado ASC en metros  
         min_dist_vertices = 2.0  # Distancia mínima entre vértices en metros
         

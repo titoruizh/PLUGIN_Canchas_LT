@@ -32,7 +32,7 @@ import math
 class ProcessingProcessor:
     """Procesador de procesamiento espacial completo - TODAS las funciones del script original"""
     
-    def __init__(self, proc_root, pixel_size=0.1, suavizado_tolerance=1.0, min_dist_vertices=2.0, 
+    def __init__(self, proc_root, pixel_size=0.25, suavizado_tolerance=1.0, min_dist_vertices=2.0, 
                  progress_callback=None, log_callback=None):
         """
         Inicializar procesador con parámetros de la GUI

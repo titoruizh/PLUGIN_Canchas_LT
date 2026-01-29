@@ -23,6 +23,7 @@ import tempfile
 from datetime import datetime
 import numpy as np
 from osgeo import gdal, osr
+from scipy.ndimage import distance_transform_edt, binary_dilation
 from qgis.core import (
     QgsProject, QgsMapLayer, QgsCoordinateReferenceSystem, QgsRasterLayer, 
     QgsExpressionContextUtils, QgsRectangle, QgsMapSettings, QgsMapRendererSequentialJob,
@@ -232,6 +233,66 @@ class VolumeScreenshotProcessor:
             ds_work = None
             return False
 
+        # --- AUTO-UPSAMPLING (MEJORA V6.1) ---
+        # Verificar si el parche tiene mejor resolución que el muro.
+        # Si es así, mejorar la resolución del muro para que el talud se vea HD.
+        try:
+            gt_work = ds_work.GetGeoTransform()
+            gt_patch = ds_patch.GetGeoTransform()
+            
+            px_w = gt_work[1]
+            px_p = gt_patch[1]
+            
+            # Si el pixel del muro es > 10% más grande que el del parche (ej. 1.0 vs 0.1)
+            # Y no estamos hablando de diferencias infinitesimales (< 0.001)
+            if px_w > (px_p * 1.1) and abs(px_w - px_p) > 0.001:
+                self.log_callback(f"⚠️ Detectada diferencia de resolución: Muro={px_w:.3f}m vs Parche={px_p:.3f}m")
+                self.log_callback(f"🔄 Realizando UPSAMPLING automático del Muro a {px_p:.3f}m para máxima calidad...")
+                
+                # Cerrar dataset para permitir edición
+                ds_work = None
+                
+                # Nombre temporal
+                temp_upsample = work_path.replace(".tif", "_upsample_temp.tif")
+                
+                # Usar gdal.Warp para reuestrear (Bilinear para suavidad)
+                # OPTIMIZACIÓN v6.2: Usar COMPRESS=DEFLATE y PREDICTOR=3 (Floating Point) para reducir peso drásticamente
+                upsample_opts = gdal.WarpOptions(
+                    xRes=px_p, 
+                    yRes=px_p,
+                    resampleAlg=gdal.GRA_Bilinear,
+                    format='GTiff',
+                    creationOptions=[
+                        "TILED=YES", 
+                        "COMPRESS=DEFLATE", 
+                        "PREDICTOR=3", 
+                        "ZLEVEL=9",
+                        "BIGTIFF=YES"
+                    ]
+                )
+                
+                # Ejecutar
+                gdal.Warp(temp_upsample, work_path, options=upsample_opts)
+                
+                # Reemplazar archivo original (windows requiere remove explícito a veces)
+                import shutil
+                try:
+                    os.remove(work_path)
+                    shutil.move(temp_upsample, work_path)
+                    self.log_callback(f"✅ Muro actualizado exitosamente a resolución de parche ({px_p:.3f}m)")
+                except Exception as e:
+                    self.log_callback(f"❌ Error reemplazando archivo upsampled: {e}")
+                    # Intentar recuperar
+                    if os.path.exists(temp_upsample):
+                        shutil.copy(temp_upsample, work_path)
+                
+                # Reabrir ds_work con la nueva resolución
+                ds_work = gdal.Open(work_path, gdal.GA_Update)
+                
+        except Exception as e:
+            self.log_callback(f"⚠️ Error en auto-upsampling (se continuará con resolución original): {e}")
+
+        # Re-leer geotransform (puede haber cambiado)
         gt = ds_work.GetGeoTransform()
         px_size_x = gt[1]
         px_size_y = abs(gt[5])
@@ -282,25 +343,102 @@ class VolumeScreenshotProcessor:
         base_arr = band_work.ReadAsArray().astype(np.float32)
         patch_arr = ds_patch_aligned.ReadAsArray().astype(np.float32)
 
-        # Máscara mejorada para evitar valores extremos durante el pegado
-        mask = (patch_arr != nodata_patch) & (np.abs(patch_arr) < 1000) & (~np.isnan(patch_arr)) & (~np.isinf(patch_arr))
-        if not np.any(mask):
-            self.log_callback(f"⚠️ Parche '{patch_layer.name()}' no tiene celdas válidas dentro de la extensión de {dem_layer_name}")
-        else:
-            # Logging para debugging del pegado
-            pixeles_validos = np.count_nonzero(mask)
-            rango_patch = f"{np.min(patch_arr[mask]):.2f} a {np.max(patch_arr[mask]):.2f}"
-            self.log_callback(f"🔧 Pegando {pixeles_validos} píxeles válidos (rango: {rango_patch}) sobre '{dem_layer_name}'")
-            
-            base_arr[mask] = patch_arr[mask]
-            band_work.WriteArray(base_arr)
-            band_work.SetNoDataValue(nodata_base)
-            band_work.FlushCache()
-            ds_work.FlushCache()
-            self.log_callback(f"✅ Parche '{patch_layer.name()}' pegado correctamente sobre '{dem_layer_name}'")
+        # Usar nuevo método de pegado con proyección de talud (Slope Projection v6)
+        # Se pasa px_size_x para calcular pendientes reales en metros
+        self._apply_transition_skirt(base_arr, patch_arr, nodata_patch, nodata_base, px_size=px_size_x, transition_width=100)
+        
+        band_work.WriteArray(base_arr)
+        band_work.SetNoDataValue(nodata_base)
+        band_work.FlushCache()
+        ds_work.FlushCache()
+        self.log_callback(f"✅ Parche '{patch_layer.name()}' pegado correctamente sobre '{dem_layer_name}' con suavizado")
 
         ds_patch_aligned = None
         ds_patch = None
+        
+    def _apply_transition_skirt(self, base_arr, patch_arr, nodata_patch, nodata_base, px_size=1.0, transition_width=100):
+        """
+        Aplica el parche usando Slope Projection v6 (Proyección de Talud Natural).
+
+        Mejoras v6 (Physical Embankment):
+        En lugar de interpolar, PROYECTAMOS un talud físico.
+        Esto genera la estética de "maquinaria" y "movimiento de tierras" realista.
+        """
+        try:
+            # Pendiente 1:1 (45 grados)
+            SLOPE_RATIO = 1.0  
+            
+            # 1. Máscaras de validez
+            valid_p = (patch_arr != nodata_patch) & (np.abs(patch_arr) < 100000)
+            if not np.any(valid_p): return
+
+            # 2. EDT (Distancia al borde del parche)
+            dist, idx = distance_transform_edt(~valid_p, return_indices=True)
+            
+            # Scouting zone
+            wz = (dist > 0) & (dist <= transition_width)
+            if not np.any(wz):
+                base_arr[valid_p] = patch_arr[valid_p]
+                return
+
+            # 3. Z de Referencia (Borde del parche)
+            z_ref_patch = patch_arr[tuple(idx)]
+            
+            # 4. DETERMINAR DIRECCIÓN DEL TALUD (Mejora v6.3: Smart Cut/Fill)
+            # Necesitamos saber si la tierra alrededor es más alta (Corte) o más baja (Relleno)
+            valid_base_mask = (base_arr != nodata_base) & (np.abs(base_arr) < 100000) & (~np.isnan(base_arr))
+            
+            # Mapa de dirección (por defecto -1.0 = Relleno/Bajada)
+            slope_direction = np.full(base_arr.shape, -1.0, dtype=np.float32)
+            
+            if np.any(valid_base_mask):
+                # Encontrar el pixel válido de BASE más cercano para cada punto del vacío
+                # Invertimos máscara: queremos distancia HASTA los True (valid base)
+                dist_to_base, idx_base = distance_transform_edt(~valid_base_mask, return_indices=True)
+                
+                # Z del terreno existente más cercano
+                z_ref_base = base_arr[tuple(idx_base)]
+                
+                # Comparar: Si terreno > parche -> Corte (+1.0). Si terreno < parche -> Relleno (-1.0)
+                # Usamos una máscara para aplicar esto solo donde sea relevante (cerca del parche)
+                is_cut = (z_ref_base > z_ref_patch)
+                slope_direction[is_cut] = 1.0
+            
+            # 5. Cálculo del Talud (Bidireccional)
+            # Z = Z_parche + (Dirección * Distancia / Ratio)
+            # Si Dir=+1 (Corte), sube. Si Dir=-1 (Relleno), baja.
+            z_proj = z_ref_patch + (slope_direction * (dist * px_size) / SLOPE_RATIO)
+            
+            # 6. Fusionar con la topografía existente
+            b_val = base_arr[wz]
+            p_val = z_proj[wz]
+            
+            # Gaps / Void detection
+            is_gap = (b_val == nodata_base) | np.isnan(b_val) | (np.abs(b_val) > 100000)
+            
+            res = b_val.copy()
+            
+            # Rellenar vacíos con la proyección calculada (sea corte o relleno)
+            res[is_gap] = p_val[is_gap]
+            
+            # Fill logic: Si proyectamos Relleno (bajada) y quedamos sobre el terreno -> Imponer
+            is_fill_embankment = (slope_direction[wz] < 0) & (p_val > b_val) & (~is_gap)
+            res[is_fill_embankment] = p_val[is_fill_embankment]
+            
+            # Cut logic (NUEVO V6.3): Si proyectamos Corte (subida) y estamos BAJO el terreno -> Excavar
+            # Es decir, la rampa de subida va "comiéndose" la montaña hasta que sale a la superficie
+            is_cut_excavation = (slope_direction[wz] > 0) & (p_val < b_val) & (~is_gap)
+            res[is_cut_excavation] = p_val[is_cut_excavation]
+            
+            base_arr[wz] = res.astype(np.float32)
+            
+            # 7. Pegar Parche Original (Intacto)
+            base_arr[valid_p] = patch_arr[valid_p]
+
+        except Exception as e:
+            self.log_callback(f"⚠️ Error v6.3: {e}")
+            mask = (patch_arr != nodata_patch)
+            base_arr[mask] = patch_arr[mask]
         ds_work = None
 
         try:

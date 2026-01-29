@@ -96,4 +96,42 @@ El uso de `QSettings` permite que el Ingeniero Topógrafo mantenga su contexto d
 Todas las operaciones pesadas emiten señales de progreso (`progress_signal`) que actualizan la UI sin congelarla (aunque actualmente corre en el hilo principal por limitaciones de la API de gráfica de QGIS, está preparado para moverse a `QTask` en el futuro).
 
 ---
+
+## 6. Algoritmos Avanzados (Topografía de Precisión)
+
+### 6.1. Slope Projection v6.3 (Smart Cut & Fill)
+Implementado en `volume_screenshot.volume_screenshot_tool._apply_transition_skirt`.
+Este algoritmo resuelve el problema de la integración de "Parches" (nuevos levantamientos) sobre el "Muro Base" (topografía existente), eliminando artefactos visuales y huecos.
+
+**Lógica del Algoritmo:**
+1.  **Detección de Contexto (Bidireccional):**
+    *   No asume solo Relleno (Terraplén). Analiza la topografía circundante.
+    *   Si el terreno vecino es más BAJO que el parche -> Proyecta **Relleno** (Talud hacia abajo).
+    *   Si el terreno vecino es más ALTO que el parche -> Proyecta **Corte** (Talud hacia arriba/Excavación).
+    
+2.  **Proyección Geométrica (1:1):**
+    *   Proyecta un talud físico real con pendiente 1:1 (45°) desde el borde del parche.
+    *   Formula: `Z_proj = Z_borde + (Dirección * Distancia * 1.0)`
+    *   Esto genera una estética de "movimiento de tierras" realista, simulando maquinaria pesada.
+
+3.  **Cierre de Gaps (Void Filling):**
+    *   Rellena vacíos de información (NoData) entre la cancha y el cerro usando la proyección calculada.
+    *   Extiende la búsqueda hasta **100 px** para asegurar conexión sólida.
+
+### 6.2. Gestión de Resolución Adaptativa (Upsampling v6.1)
+El sistema garantiza que la calidad visual del talud generado sea siempre Alta Definición (HD), independiente de la calidad del Muro Base.
+
+*   **Detección:** Compara la resolución del Muro vs el Parche.
+*   **Acción:** Si el Muro tiene menor resolución (ej. 1.0m) que el Parche (ej. 0.25m), realiza un **Upsampling Automático** del Muro a 0.25m usando interpolación Bilineal.
+*   **Resultado:** El talud se dibuja con la densidad de píxeles del parche, evitando el "pixelado" en las pendientes.
+
+### 6.3. Optimización de Compresión (GDAL Predictor)
+Debido al aumento de resolución (Upsampling), el tamaño de archivo puede dispararse. Se implementó una estrategia de compresión agresiva:
+
+*   **Formato:** GTiff (BigTIFF enabled)
+*   **Compresión:** `DEFLATE` (Lossless)
+*   **Predictor:** `3` (Floating Point Predictor).
+    *   *Impacto:* Reduce el peso de archivos de elevación (float32) drásticamente (ej. de 400MB a ~80-100MB) al predecir valores decimales secuenciales.
+
+---
 *Documentado por Antigravity Agent, Senior Software Architect.*
