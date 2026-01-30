@@ -134,6 +134,7 @@ class TableCreationProcessor:
         fields.append(QgsField("Espesor mínimo", QVariant.Double))
         fields.append(QgsField("Espesor máximo", QVariant.Double))
         fields.append(QgsField("Disciplina", QVariant.String))
+        fields.append(QgsField("Cancha_Anterior", QVariant.String)) # Nueva columna (Enero 2026) -> Provenance
         fields.append(QgsField("N° Capas", QVariant.String))  # Nueva columna al final
 
         tabla = QgsVectorLayer("None", "Tabla Base Datos", "memory")
@@ -505,18 +506,32 @@ class TableCreationProcessor:
                 puntos_layer = puntos_layers[base]
                 tin_nuevo = triangulaciones_layers[base]
 
-                # Buscar DEM correspondiente
+                # Buscar DEM correspondiente (Flexible)
                 datos_nombre = self.parsear_nombre_archivo(base)
-                muro_code = datos_nombre["Muro_Code"].upper()  # Convertir a mayúsculas
-                dem_name = dem_map.get(muro_code)
+                muro_code = datos_nombre["Muro_Code"].upper()
+                
+                # Intentar mapeo directo primero (Legacy)
+                dem_name_strict = dem_map.get(muro_code)
                 tin_base = None
-                if dem_name:
-                    for layer in project.mapLayers().values():
-                        if layer.name() == dem_name:
-                            tin_base = layer
-                            break
+                
+                # Búsqueda flexible: DEM_{muro_code}*
+                prefix_target = f"DEM_{muro_code}"
+                
+                for layer in project.mapLayers().values():
+                    # 1. Check exact match via mapping
+                    if dem_name_strict and layer.name() == dem_name_strict:
+                        tin_base = layer
+                        break
+                    # 2. Check flexible prefix
+                    if layer.name().upper().startswith(prefix_target):
+                        tin_base = layer
+                        # Si encontramos uno que empieza igual, lo usamos.
+                        # (Podríamos agregar lógica para elegir el más reciente si hay varios, 
+                        #  pero por ahora el primero que match es suficiente dada la restricción de validación)
+                        break
+
                 if not tin_base:
-                    self.log_callback(f"⚠️ No se encontró DEM para el muro {muro_code} ({base})")
+                    self.log_callback(f"⚠️ No se encontró DEM para el muro {muro_code} ({base}) - Buscado: DEM_{muro_code}*")
                     continue
 
                 # Obtener información de levantamientos

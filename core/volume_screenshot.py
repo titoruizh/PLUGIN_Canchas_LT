@@ -94,10 +94,53 @@ class VolumeScreenshotProcessor:
         
         # Lista para archivos temporales
         self.temp_files = []
+        
+        # Cache de DEMs Originales (para línea Café del perfil)
+        # Diccionario: {'DEM_MP': 'path/to/original.tif', ...}
+        self.original_dem_paths = {}
 
     # ===========================================
     # FUNCIONES AUXILIARES DE VOLUME_CALCULATION
     # ===========================================
+
+    def _get_overlapping_predecessors(self, current_poly_geom, processed_polygons_list):
+        """
+        Detecta canchas anteriores que se solapan con la actual.
+        
+        Args:
+            current_poly_geom: Geometría de la cancha actual
+            processed_polygons_list: Lista de dicts [{'name': '...', 'geom': QgsGeometry}, ...] de canchas YA procesadas.
+            
+        Returns:
+            list: Lista de nombres de canchas anteriores ordenadas por área de solape (mayor a menor).
+            dict: Metadatos extra (ej. áreas)
+        """
+        overlaps = []
+        area_current = current_poly_geom.area()
+        
+        for i, item in enumerate(processed_polygons_list):
+            prev_geom = item['geom']
+            prev_name = item['name']
+            
+            if prev_geom.intersects(current_poly_geom):
+                intersection = current_poly_geom.intersection(prev_geom)
+                if not intersection.isEmpty():
+                    inter_area = intersection.area()
+                    # Consideramos solape significativo si es > 1% del área o > 10m2
+                    if inter_area > 10.0:
+                        overlaps.append({
+                            'name': prev_name,
+                            'area': inter_area,
+                            'index': i
+                        })
+        
+        # Ordenar por:
+        # 1. Recencia (Índice mayor = más nuevo en la lista)
+        # 2. Área -> Desempatar
+        overlaps.sort(key=lambda x: (x['index'], x['area']), reverse=True)
+        
+        predecessors_names = [o['name'] for o in overlaps]
+        return predecessors_names, overlaps
 
     def _get_layer_by_name(self, name):
         proj = QgsProject.instance()
@@ -204,6 +247,24 @@ class VolumeScreenshotProcessor:
             pass
 
         self.log_callback(f"✅ {dem_layer_name} ahora trabaja sobre temporal: {work_path}")
+        
+        # --- NUEVO: Guardar referencia al DEM ORIGINAL (para perfil Café) ---
+        # Si es la primera vez que se toca este Muro en esta sesión, guardamos una copia "Virgen"
+        # para tener la referencia del suelo original durante todo el proceso.
+        if dem_layer_name not in self.original_dem_paths:
+            base_orig = f"{dem_layer_name}_original_ref.tif"
+            orig_path = os.path.join(os.path.expandvars(os.getenv("TEMP") or os.getenv("TMP") or ""), base_orig)
+            
+            # Copiar el estado actual (que es el inicial) a este path seguro
+            import shutil
+            try:
+                # Si work_path acaba de ser creado desde la fuente, es el original.
+                shutil.copy(work_path, orig_path)
+                self.original_dem_paths[dem_layer_name] = orig_path
+                self.log_callback(f"💾 DEM Original (Virgen) respaldado para perfil topográfico: {orig_path}")
+            except Exception as e:
+                self.log_callback(f"⚠️ No se pudo respaldar DEM Original: {e}")
+
         return True
 
     def overlay_patch_onto_dem(self, patch_layer, dem_layer_name):
@@ -1336,60 +1397,185 @@ class VolumeScreenshotProcessor:
         
         return (distancias_array, np.array(valores_dem), np.array(valores_tin))
     
-    def generar_grafico_perfil(self, distancias, valores_dem, valores_tin, archivo_salida, nombre_cancha):
+    
+    def muestrear_perfil_multicapa(self, layers_dict, punto_inicio, punto_fin, num_puntos=100, linea_geom=None):
         """
-        Genera gráfico de perfil topográfico con áreas de corte/relleno coloreadas.
+        Muestrea N capas raster a la vez.
         
         Args:
-            distancias: Array de distancias reales del perfil
-            valores_dem: Array de valores del DEM
-            valores_tin: Array de valores del TIN
-            archivo_salida: Ruta donde guardar el gráfico
-            nombre_cancha: Nombre de la cancha (no se usa en el título)
+            layers_dict: Dict {'Label': RasterLayer, ...}
+            punto_inicio, punto_fin: Puntos extremos
+            linea_geom: (Opcional) Geometría de línea para seguir curvatura
+            
+        Returns:
+            tuple: (distancias_array, data_dict) donde data_dict = {'Label': [val1, val2...]}
+        """
+        from qgis.core import QgsPointXY, QgsRaster
+        import numpy as np
+        
+        data_dict = {k: [] for k in layers_dict.keys()}
+        distancias = []
+        
+        # Determinar puntos de muestreo
+        puntos_muestreo = []
+        longitud_total = 0
+        
+        if linea_geom:
+            longitud_total = linea_geom.length()
+            if longitud_total > 0:
+                for i in range(num_puntos):
+                    d = (i / (num_puntos - 1)) * longitud_total
+                    pt = linea_geom.interpolate(d).asPoint()
+                    puntos_muestreo.append((d, QgsPointXY(pt)))
+        else:
+            longitud_total = punto_inicio.distance(punto_fin)
+            if longitud_total > 0:
+                for i in range(num_puntos):
+                    t = i / (num_puntos - 1)
+                    x = punto_inicio.x() + t * (punto_fin.x() - punto_inicio.x())
+                    y = punto_inicio.y() + t * (punto_fin.y() - punto_inicio.y())
+                    # Distancia acumulada = t * total
+                    puntos_muestreo.append((t * longitud_total, QgsPointXY(x, y)))
+            
+        # Muestrear
+        for dist, pt in puntos_muestreo:
+            distancias.append(dist)
+            for label, layer in layers_dict.items():
+                if layer and layer.isValid():
+                    res = layer.dataProvider().identify(pt, QgsRaster.IdentifyFormatValue)
+                    val = res.results().get(1)
+                    data_dict[label].append(val if val is not None else np.nan)
+                else:
+                    data_dict[label].append(np.nan)
+                    
+        return np.array(distancias), data_dict
+
+    def generar_grafico_perfil_multicapa(self, distancias, data_dict, archivo_salida, label_previo="Superficie Previa", label_actual="Cancha Nueva", label_original="Terreno Original"):
+        """
+        Genera gráfico de perfil con múltiples capas:
+        - Brown: Original (Base)
+        - Blue: Previo (Acumulado)
+        - Orange: Nuevo (Cancha actual)
+        - Red (Dashed): Predecesor específico (si existe)
+        Args:
+            label_previo: Etiqueta para línea azul (ej: "Base: Cancha A")
+            label_actual: Etiqueta para línea naranja (ej: "Cancha Nueva: Cancha B")
         """
         import matplotlib.pyplot as plt
         
         fig, ax = plt.subplots(figsize=(12, 6))
         
-        # Plotear líneas principales con nuevas etiquetas
-        ax.plot(distancias, valores_dem, color='#1f77b4', linewidth=2.5, label='Terreno', zorder=3)
-        ax.plot(distancias, valores_tin, color='#ff7f0e', linewidth=2.5, label='Cancha Levantada', zorder=3)
+        # Definir estilos por rol
+        styles = {
+            'Original': {'color': '#8B4513', 'width': 2.0, 'style': '-', 'label': label_original, 'z': 1}, # Café
+            'Previo':   {'color': '#1f77b4', 'width': 2.0, 'style': '-', 'label': label_previo, 'z': 2}, # Azul
+            'Actual':   {'color': '#ff7f0e', 'width': 2.5, 'style': '-', 'label': label_actual, 'z': 4},      # Naranja
+        }
         
-        # Rellenar áreas de corte y relleno
-        for i in range(len(distancias) - 1):
-            if valores_tin[i] > valores_dem[i]:
-                # Relleno (verde tenue)
-                ax.fill_between(
-                    [distancias[i], distancias[i+1]],
-                    [valores_dem[i], valores_dem[i+1]],
-                    [valores_tin[i], valores_tin[i+1]],
-                    color='green', alpha=0.3, zorder=1
-                )
-            else:
-                # Corte (rojo tenue)
-                ax.fill_between(
-                    [distancias[i], distancias[i+1]],
-                    [valores_dem[i], valores_dem[i+1]],
-                    [valores_tin[i], valores_tin[i+1]],
-                    color='red', alpha=0.3, zorder=1
-                )
+        # Cualquier otra key se asume como "Predecesor específico" (Línea roja discontinua)
         
-        # Configuración del gráfico (sin título)
+                
+        # 1. Plotear Original y Previo primero
+        # Detectar si es Terreno Base (sin predecesores) para no dibujar Azul sobre Café
+        is_base_only = (label_previo == "Terreno Base")
+        
+        for role in ['Original', 'Previo']:
+            if role == 'Previo' and is_base_only:
+                continue
+                
+            if role in data_dict and len(data_dict[role]) > 0:
+                vals = data_dict[role]
+                # Filtrar NaNs para plotear continuo si es posible, o dejar huecos
+                ax.plot(distancias, vals, 
+                        color=styles[role]['color'], 
+                        linewidth=styles[role]['width'], 
+                        linestyle=styles[role]['style'],
+                        label=styles[role]['label'],
+                        zorder=styles[role]['z'])
+                        
+        # 2. Plotear Predecesores Específicos (Cancha A, B...)
+        # Buscamos keys que no sean los roles estándar
+        for key in data_dict.keys():
+            if key not in ['Original', 'Previo', 'Actual']:
+                # Logica de exclusión: Si el nombre del predecesor ya está en la "Base", no lo dibujamos
+                # Esto evita duplicidad visual (Línea Roja sobre Línea Azul)
+                if key in label_previo:
+                    continue
+                    
+                # Es un predecesor específico no principal
+                vals = data_dict[key]
+                ax.plot(distancias, vals,
+                        color='red',
+                        linewidth=1.5,
+                        linestyle='--',
+                        label=f'Subbase: {key}',
+                        zorder=3)
+                        
+        # 3. Plotear Actual (Top)
+        if 'Actual' in data_dict:
+            vals = data_dict['Actual']
+            ax.plot(distancias, vals,
+                    color=styles['Actual']['color'],
+                    linewidth=styles['Actual']['width'], 
+                    label=styles['Actual']['label'],
+                    zorder=styles['Actual']['z'])
+            
+            # Rellenar areas (Corte/Relleno) respecto al PREVIO
+            # Si es base only, rellenamos respecto a ORIGINAL (Café), sino respecto a PREVIO (Azul)
+            vals_prev = None
+            if not is_base_only and 'Previo' in data_dict:
+                 vals_prev = data_dict['Previo']
+            elif is_base_only and 'Original' in data_dict:
+                 vals_prev = data_dict['Original']
+            
+            if vals_prev is not None:
+                # Validar longitudes
+                if len(vals) == len(vals_prev):
+                    # Relleno (Verde) donde Actual > Previo
+                    ax.fill_between(distancias, vals_prev, vals, 
+                                    where=(np.array(vals) > np.array(vals_prev)),
+                                    color='green', alpha=0.2, interpolate=True, zorder=0)
+                    # Corte (Rojo) donde Actual < Previo
+                    ax.fill_between(distancias, vals_prev, vals, 
+                                    where=(np.array(vals) < np.array(vals_prev)),
+                                    color='red', alpha=0.2, interpolate=True, zorder=0)
+
+        # Configuración
         ax.set_xlabel('Distancia (m)', fontsize=12, fontweight='bold')
         ax.set_ylabel('Cota (m)', fontsize=12, fontweight='bold')
-        # Título removido según solicitud del usuario
         
-        ax.legend(loc='best', fontsize=10, framealpha=0.9)
+        # Reordenar Leyenda: Nueva > Base > Subbase > Original
+        handles, labels = ax.get_legend_handles_labels()
+        
+        def get_order(lbl):
+            if lbl.startswith("Cancha Nueva"): return 0
+            if lbl.startswith("Base"): return 1
+            if lbl.startswith("Subbase"): return 2
+            if lbl.startswith("Terreno"): return 3
+            return 99
+            
+        # Sort zipped list
+        import operator
+        hl_sorted = sorted(zip(handles, labels), key=lambda x: get_order(x[1]))
+        if hl_sorted:
+            handles_s, labels_s = zip(*hl_sorted)
+            ax.legend(handles_s, labels_s, loc='best', fontsize=9, framealpha=0.9)
+        else:
+            ax.legend(loc='best', fontsize=9, framealpha=0.9)
+            
         ax.grid(True, alpha=0.3, linestyle='--')
         
-        # Ajustar layout
         plt.tight_layout()
-        
-        # Guardar
         plt.savefig(archivo_salida, dpi=150, bbox_inches='tight')
         plt.close()
         
-        self.log_callback(f"✅ Perfil topográfico generado: {archivo_salida}")
+        self.log_callback(f"✅ Perfil Multi-Capa generado: {archivo_salida}")
+
+    def generar_grafico_perfil(self, distancias, valores_dem, valores_tin, archivo_salida, nombre_cancha):
+        # LEGACY WRAPPER (por compatibilidad si algo falla)
+        data = {'Previo': valores_dem, 'Actual': valores_tin}
+        self.generar_grafico_perfil_multicapa(distancias, data, archivo_salida)
+
     
     def actualizar_campo_perfil(self, tabla, feature, nombre_archivo):
         """
@@ -1511,6 +1697,10 @@ class VolumeScreenshotProcessor:
             else:
                 self.log_callback("ℹ️ La columna 'Perfil' ya existe en la tabla")
 
+            # Cache de polígonos procesados para detectar solapes
+            # Lista de dicts: {'name': str, 'geom': QgsGeometry}
+            processed_polygons_history = []
+
             # PROCESAR FLUJO INCREMENTAL
             total_bases = len(sorted_bases)
             bases_procesadas = 0
@@ -1529,18 +1719,73 @@ class VolumeScreenshotProcessor:
                     
                 poligono_layer = poligonos_layers[nombre_layer]
                 tin_nuevo = triangulaciones_layers[nombre_layer]
+                
+                # Obtener geometría del polígono actual
+                current_poly_geom = None
+                for feat in poligono_layer.getFeatures():
+                    current_poly_geom = feat.geometry()
+                    break
 
+                # Búsqueda flexible del DEM específico (ej. DEM_MP_250101)
                 datos_nombre = self.parsear_nombre_archivo(nombre_layer)
-                muro_code = datos_nombre["Muro_Code"].upper()  # Convertir a mayúsculas
-                dem_name = dem_map.get(muro_code)
-                if not dem_name or not self.initialize_dem_work(dem_name):
-                    self.log_callback(f"⚠️ No se pudo inicializar DEM para {muro_code}")
+                muro_code = datos_nombre["Muro_Code"].upper()
+                
+                # Buscar capa que empiece con DEM_{muro_code}
+                dem_prefix = f"DEM_{muro_code}"
+                dem_real_name = None
+                
+                # Primero intentar mapeo directo si existe en dem_map (legacy)
+                if muro_code in dem_map:
+                    mapped_name = dem_map[muro_code]
+                    if self._get_layer_by_name(mapped_name):
+                        dem_real_name = mapped_name
+                
+                # Si no, buscar por prefijo en capas cargadas
+                if not dem_real_name:
+                    for lyr in QgsProject.instance().mapLayers().values():
+                        if lyr.name().upper().startswith(dem_prefix):
+                            dem_real_name = lyr.name()
+                            break
+                            
+                if not dem_real_name:
+                    self.log_callback(f"⚠️ No se encontró capa DEM para {muro_code} (Buscado: {dem_prefix}*)")
+                    continue
+                    
+                # Inicializar work files si es necesario
+                if not self.initialize_dem_work(dem_real_name):
+                     self.log_callback(f"⚠️ No se pudo inicializar DEM work files para {dem_real_name}")
+                     continue
+
+                tin_base = self._get_layer_by_name(dem_real_name)
+                if not tin_base:
+                    self.log_callback(f"⚠️ Error crítico recuperando capa {dem_real_name}")
                     continue
 
-                tin_base = self._get_layer_by_name(dem_name)
-                if not tin_base:
-                    self.log_callback(f"⚠️ No se encontró DEM para {muro_code}")
-                    continue
+                # DETECCIÓN DE PREDECESOR (PROVENANCE)
+                canchas_anteriores_str = ""
+                pred_names = [] # Inicializar lista para scope
+                predecessor_layers = {} # Mapeo {Nombre: Layer} para gráfico
+                
+                if current_poly_geom:
+                    pred_names, overlaps_info = self._get_overlapping_predecessors(current_poly_geom, processed_polygons_history)
+                    if pred_names:
+                        canchas_anteriores_str = ", ".join(pred_names)
+                        self.log_callback(f"🧬 Predecesores detectados para {base}: {canchas_anteriores_str}")
+                        
+                        # Guardar referencias a las capas de los predecesores para el gráfico (limitado al top 2)
+                        # Top 1 -> Base (Azul)
+                        # Top 2 -> Predecesor Secundario (Roja)
+                        for p_name in pred_names[:2]: 
+                            if p_name in triangulaciones_layers:
+                                predecessor_layers[p_name] = triangulaciones_layers[p_name]
+                    else:
+                        canchas_anteriores_str = "Terreno Base"
+                        
+                    # Agregar a historia
+                    processed_polygons_history.append({
+                        'name': nombre_layer, # Usar nombre real sin F
+                        'geom': current_poly_geom
+                    })
 
                 # Forzar recarga de datos de la base antes de calcular (importante para procesamiento incremental)
                 try:
@@ -1555,7 +1800,22 @@ class VolumeScreenshotProcessor:
                 # 1) CALCULAR VOLÚMENES Y ESPESORES
                 self.calcular_volumenes(poligono_layer, tin_nuevo, tin_base, tabla, nombre_layer)
 
-                # 2) GENERAR PANTALLAZO DE DIFERENCIA DEM y PERFIL
+                # Actualizar columna Cancha_Anterior
+                try:
+                    tabla.startEditing() 
+                    # Buscar feature
+                    for f in tabla.getFeatures():
+                        if f["Foto"] == f"{nombre_layer}.jpg" or f["Foto"] == f"F{nombre_layer}":
+                             idx = tabla.fields().indexFromName("Cancha_Anterior")
+                             if idx != -1:
+                                 tabla.changeAttributeValue(f.id(), idx, canchas_anteriores_str)
+                             break
+                    tabla.commitChanges()
+                except Exception as e:
+                    self.log_callback(f"⚠️ Error actualizando DB cancha anterior: {e}")
+                    tabla.rollBack()
+
+                # 2) GENERAR PANTALLAZO DE DIFERENCIA DEM y PERFIL MULTICAPA
                 if capa_fondo:
                     # Calcular línea de perfil (recta como fallback)
                     punto_inicio_perfil, punto_fin_perfil = None, None
@@ -1591,7 +1851,7 @@ class VolumeScreenshotProcessor:
                         except Exception as e:
                             self.log_callback(f"❌ Error generando pantallazo para {nombre_layer}: {e}")
                 
-                # 2.5) GENERAR PERFIL TOPOGRÁFICO
+                # 2.5) GENERAR PERFIL TOPOGRÁFICO MULTICAPA
                 try:
                     # Crear carpeta si no existe
                     if not os.path.exists(self.CARPETA_PERFILES):
@@ -1618,23 +1878,48 @@ class VolumeScreenshotProcessor:
                             )
                         
                         if punto_inicio and punto_fin:
-                            # Muestrear valores - usar línea central si está disponible
-                            if linea_perfil_geom and not linea_perfil_geom.isEmpty():
-                                # Usar línea central del polígono (sigue curvatura)
-                                distancias, vals_dem, vals_tin = self.muestrear_perfil_linea(
-                                    tin_base, tin_nuevo, linea_perfil_geom
-                                )
-                            else:
-                                # Fallback a línea recta
-                                distancias, vals_dem, vals_tin = self.muestrear_perfil(
-                                    tin_base, tin_nuevo, punto_inicio, punto_fin
-                                )
+                            # PREPARAR CAPAS PARA PERFIL MULTICAPA
+                            # 1. Original (Brown)
+                            original_layer = None
+                            if dem_real_name in self.original_dem_paths:
+                                orig_path = self.original_dem_paths[dem_real_name]
+                                original_layer = QgsRasterLayer(orig_path, "DEM Original")
+                            
+                            # 2. Previo (Blue) - Es el 'tin_base' en este momento (Acumulado)
+                            previo_layer = tin_base
+                            
+                            # 3. Actual (Orange)
+                            actual_layer = tin_nuevo
+                            
+                            layers_to_sample = {
+                                'Original': original_layer,
+                                'Previo': previo_layer,
+                                'Actual': actual_layer
+                            }
+                            
+                            # 4. Predecesores específicos (Red)
+                            for p_name, p_layer in predecessor_layers.items():
+                                layers_to_sample[p_name] = p_layer
+                            
+                            # Muestrear
+                            distancias, data_dict = self.muestrear_perfil_multicapa(
+                                layers_to_sample, punto_inicio, punto_fin, num_puntos=100, linea_geom=linea_perfil_geom
+                            )
                             
                             if len(distancias) > 0:
                                 # Generar gráfico
                                 archivo_perfil = os.path.join(self.CARPETA_PERFILES, f"PERFIL_{base}.jpg")
-                                self.generar_grafico_perfil(
-                                    distancias, vals_dem, vals_tin, archivo_perfil, base
+                                
+                                # Determinar etiqueta dinámica para la base
+                                lbl_previo = "Terreno Base"
+                                if pred_names:
+                                    lbl_previo = f"Base: {pred_names[0]}"
+                                    
+                                self.generar_grafico_perfil_multicapa(
+                                    distancias, data_dict, archivo_perfil, 
+                                    label_previo=lbl_previo,
+                                    label_actual=f"Cancha Nueva: {base}",
+                                    label_original=f"Terreno Original: {dem_real_name}"
                                 )
                                 
                                 # Actualizar campo Perfil en la tabla
@@ -1646,11 +1931,13 @@ class VolumeScreenshotProcessor:
                         self.log_callback(f"⚠️ No se encontró feature en tabla para {base}, perfil omitido")
                         
                 except Exception as e:
-                    self.log_callback(f"⚠️ Error generando perfil para {base}: {e}")
+                    import traceback
+                    self.log_callback(f"⚠️ Error generando perfil para {base}: {e}\n{traceback.format_exc()}")
+
                     # No detener el proceso, continuar
 
                 # 3) PEGADO INCREMENTAL (TIN nuevo se pega sobre DEM muro)
-                self.overlay_patch_onto_dem(tin_nuevo, dem_name)
+                self.overlay_patch_onto_dem(tin_nuevo, dem_real_name)
 
                 # 4) ACTUALIZACIÓN AUTOMÁTICA (DEM muro se actualiza para siguiente fila)
                 self.log_callback(f"✔️ Fila completada: {base}")

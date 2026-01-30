@@ -144,4 +144,21 @@ Resuelve la inconsistencia de mediciones en canchas con orientaciones complejas 
     *   *Principio:* Matemáticamente infalible. Si el área y el largo máximo son correctos, el ancho promedio derivado es exacto, eliminando artefactos de muestreo espacial.
 
 ---
+### 6.5. Estrategia de Persistencia "Historico_Las_Tortolas"
+*   **Problema:** Los GPKG vectoriales pierden la data Z interna (superficie), impidiendo perfiles futuros precisos.
+*   **Solución (Rolling Horizon):**
+    *   **Inventario (GPKG):** Guarda metadata y rutas.
+    *   **Consolidación (Raster):** Al cierre de mes, se funden todas las canchas sobre el terreno base para crear un nuevo `DEM_Consolidado_Mes.tif`. Este raster se convierte en el "Terreno Original" del mes siguiente, preservando la topografía exacta.
+
+### 6.6. Visualización de Perfiles (Provenanza)
+*   **Multi-layer:** El sistema ahora visualiza hasta 3 capas históricas:
+    1.  **Cancha Nueva (Naranja):** La superficie actual.
+    2.  **Base (Azul):** El predecesor inmediato (`Top 1`). Se oculta si es igual al Terreno Original.
+    3.  **Subbase (Roja):** El predecesor del predecesor (`Top 2`). Solo se muestra si difiere de la Base.
+*   **Leyenda Dinámica:**
+    *   **Orden:** `Nueva > Base > Subbase > Original`.
+    *   **Etiquetado:** El "Terreno Original" muestra el nombre exacto del archivo fuente (ej. `Terreno Original: DEM_MP_250101`), garantizando trazabilidad total del dato base utilizado.
+*   **Validación Flexible:** La validación de DEMs acepta nombres parciales (ej. `DEM_MP_250101` valida como `DEM_MP`) para permitir versionamiento de archivos base sin reescribir código.
+
+---
 *Documentado por Antigravity Agent, Senior Software Architect.*

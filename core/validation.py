@@ -482,7 +482,27 @@ class ValidationProcessor:
                     comentarios.append(f"Sector corregido: {sector} -> {top}")
                     sector = top
             
-            dem = QgsProject.instance().mapLayersByName(f"DEM_{nuevo_muro}")[0]
+            # Búsqueda flexible de DEM (acepta DEM_MP_250101 como DEM_MP)
+            dem_prefix = f"DEM_{nuevo_muro}".upper()
+            dem_layer = None
+            for lyr in QgsProject.instance().mapLayers().values():
+                if lyr.name().upper().startswith(dem_prefix):
+                    dem_layer = lyr
+                    break
+            
+            if not dem_layer:
+                # Fallback to mapLayersByName just in case
+                dems_strict = QgsProject.instance().mapLayersByName(f"DEM_{nuevo_muro}")
+                if dems_strict:
+                    dem_layer = dems_strict[0]
+            
+            if not dem_layer:
+                # Si no hay DEM específico, logear advertencia pero no fallar hard si no es crítico,
+                # o re-raise exception. El código original asumía que existía.
+                # Mantendremos la excepción para seguir el flujo original de error.
+                raise Exception(f"No se encontró capa DEM para muro {nuevo_muro} (Buscado: {dem_prefix}*)")
+
+            dem = dem_layer
             prov = dem.dataProvider()
             for _,r in df.iterrows():
                 pt = QgsPointXY(float(r['este']),float(r['norte']))
