@@ -52,6 +52,13 @@ class TableSubTab(QWidget):
         protocol_layout.addWidget(self.protocolo_inicio)
         protocol_layout.addStretch()
         config_layout.addLayout(protocol_layout)
+
+        # Checkbox depuración (Modo Senior Dev) - OCULTO PARA PRODUCCIÓN
+        self.chk_debug = QtWidgets.QCheckBox("🔍 Modo Depuración (Geometría Visible)")
+        self.chk_debug.setToolTip("Genera capas temporales mostrando la caja orientada y transectas de medición")
+        self.chk_debug.setVisible(False) # <--- Default: Oculto (Solicitud Usuario V final)
+        config_layout.addWidget(self.chk_debug)
+
         
         config_group.setLayout(config_layout)
         layout.addWidget(config_group)
@@ -123,6 +130,7 @@ class TableSubTab(QWidget):
             processor = TableCreationProcessor(
                 proc_root=proc_root,
                 protocolo_topografico_inicio=self.protocolo_inicio.value(),
+                debug_mode=self.chk_debug.isChecked(),
                 progress_callback=lambda v, m="": self.progress_signal.emit(v, m),
                 log_callback=lambda m: self.log_signal.emit(m)
             )

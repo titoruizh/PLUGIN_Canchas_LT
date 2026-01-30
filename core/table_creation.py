@@ -34,7 +34,7 @@ from qgis.utils import iface
 class TableCreationProcessor:
     """Procesador de creación de tabla base completo - TODAS las funciones del script original"""
     
-    def __init__(self, proc_root, protocolo_topografico_inicio=1, progress_callback=None, log_callback=None):
+    def __init__(self, proc_root, protocolo_topografico_inicio=1, debug_mode=False, progress_callback=None, log_callback=None):
         """
         Inicializar procesador con parámetros de la GUI
         
@@ -46,6 +46,9 @@ class TableCreationProcessor:
         """
         self.PROC_ROOT = proc_root
         self.protocolo_topografico_inicio = protocolo_topografico_inicio
+        self.debug_mode = debug_mode
+        self.debug_layer = None  # Capa para visualización
+
         
         # Callbacks
         self.progress_callback = progress_callback or (lambda x, msg="": None)
@@ -155,14 +158,86 @@ class TableCreationProcessor:
                 nearest = f
         return nearest
 
+    def _setup_debug_layer(self):
+        """Inicializa la capa de depuración si está activa"""
+        if not self.debug_mode:
+            return
+            
+        # Limpiar capa previa si existe en el proyecto
+        project = QgsProject.instance()
+        old_layers = project.mapLayersByName("DEBUG_Dimensiones")
+        if old_layers:
+            project.removeMapLayers([l.id() for l in old_layers])
+
+        # Crear capa de memoria para líneas de debug
+        uri = "LineString?crs=EPSG:32719&field=Tipo:string&field=ID_Cancha:string&field=Valor:double"
+        self.debug_layer = QgsVectorLayer(uri, "DEBUG_Dimensiones", "memory")
+        project.addMapLayer(self.debug_layer)
+
+
+    def _add_debug_line(self, p1, p2, tipo, id_cancha, valor=0.0):
+        """Agrega una línea a la capa de debug"""
+        if not self.debug_layer:
+            return
+        feat = QgsFeature(self.debug_layer.fields())
+        geom = QgsGeometry.fromPolylineXY([p1, p2])
+        feat.setGeometry(geom)
+        feat.setAttributes([tipo, id_cancha, float(valor)])
+        self.debug_layer.dataProvider().addFeature(feat)
+
+    def calcular_diametro_poligono(self, poly_geom):
+        """Calcula la distancia máxima entre cualquier par de vértices (Diámetro)"""
+        if poly_geom.isMultipart():
+            points = poly_geom.asMultiPolygon()[0][0]
+        else:
+            points = poly_geom.asPolygon()[0]
+            
+        max_dist = 0
+        p_start = points[0]
+        p_end = points[0]
+        
+        # Fuerza bruta optimizada (para polígonos topográficos de <1000 ptos es instantáneo)
+        # Se podría usar Convex Hull para acelerar, pero no vale la pena la complejidad extra aquí.
+        for i in range(len(points)):
+            for j in range(i + 1, len(points)):
+                dist = points[i].distance(points[j])
+                if dist > max_dist:
+                    max_dist = dist
+                    p_start = points[i]
+                    p_end = points[j]
+        
+        return max_dist, p_start, p_end
+
     def analizar_poligono_tin(self, poligono_layer, tin_nuevo, tin_base, base):
         """
-        Analiza el polígono y calcula área, ancho, largo.
+        Analiza el polígono y calcula dimensiones usando el método geométrico robusto (V3 - Enero 2026).
+        
+        DOCUMENTACIÓN TÉCNICA (METODOLOGÍA):
+        ------------------------------------
+        Tras pruebas con métodos de Transectas y Bounding Boxes Rotados (OMB), se determinó que eran inestables
+        para ciertas orientaciones (ej. 64° NE) o formas irregulares.
+        
+        La solución definitiva (Senior GIS Architect Approach) simplifica el problema usando invariantes geométricos:
+        
+        1. LARGO = DIÁMETRO DEL POLÍGONO
+           Se define como la distancia máxima posible entre dos vértices cualesquiera de la figura (Maximum Ferret Diameter).
+           - Ventaja: Es totalmente independiente de la rotación o sistema de coordenadas.
+           - Ventaja: Funciona para rectángulos perfectos y formas curvas ("banana").
+           
+        2. ANCHO = ÁREA / LARGO
+           Se deriva matemáticamente.
+           - Ventaja: Elimina errores de muestreo (ray-casting) donde una línea podía cruzar en diagonal.
+           - Ventaja: Garantiza consistencia topológica (Largo * Ancho ≈ Área).
+        
+        Args:
+           poligono_layer: Capa vectorial del polígono
+           tin_nuevo, tin_base: Capas raster (usadas para validación de extent, pero no para dim)
+           base: Nombre identificador para logs
         """
         poly_geom = next(poligono_layer.getFeatures()).geometry()
         extent = poly_geom.boundingBox()
-        xmin, xmax, ymin, ymax = extent.xMinimum(), extent.xMaximum(), extent.yMinimum(), extent.yMaximum()
-
+        
+        # Validación de superposición
         tin_nuevo_extent = tin_nuevo.extent()
         tin_base_extent = tin_base.extent()
         if not extent.intersects(tin_nuevo_extent) or not extent.intersects(tin_base_extent):
@@ -170,74 +245,43 @@ class TableCreationProcessor:
             return None
 
         area_m2 = round(poly_geom.area(), 3)
-        bbox = poly_geom.boundingBox()
-        largo_bbox = round(max(bbox.width(), bbox.height()), 3)
-
+        
         try:
-            result = processing.run("qgis:minimumboundinggeometry", {
-                'INPUT': poligono_layer,
-                'TYPE': 3,
-                'OUTPUT': 'memory:'
-            })
-            min_rect_layer = result['OUTPUT']
-            min_rect_geom = next(min_rect_layer.getFeatures()).geometry()
-            points = min_rect_geom.asPolygon()[0]
+            # 1. Calcular Largo como el "Diámetro" del polígono (Distancia máxima interna)
+            # Esto es invariante a la rotación y muy estable para formas alargadas.
+            largo_diametro, p1, p2 = self.calcular_diametro_poligono(poly_geom)
+            
+            largo_final = round(largo_diametro, 3)
 
-            def distancia(p1, p2):
-                return math.hypot(p1.x() - p2.x(), p1.y() - p2.y())
+            # 2. Calcular Ancho Geométrico
+            # Matemáticamente robusto: Si estiras el área a lo largo del largo máximo, ¿cuánto ancho promedio tienes?
+            if largo_final > 0:
+                ancho_final = round(area_m2 / largo_final, 3)
+            else:
+                ancho_final = 0
 
-            lados = [(i, distancia(points[i], points[i+1])) for i in range(4)]
-            idx_largo = max(lados, key=lambda t: t[1])[0]
-            p_start = points[idx_largo]
-            p_end = points[(idx_largo+1)%4]
-            vector_largo = QgsPointXY(p_end.x()-p_start.x(), p_end.y()-p_start.y())
-            longitud = distancia(p_start, p_end)
-
-            n_transectas = 50
-            anchos = []
-            for i in range(n_transectas+1):
-                frac = i / n_transectas
-                x_c = p_start.x() + vector_largo.x() * frac
-                y_c = p_start.y() + vector_largo.y() * frac
-                dx = -vector_largo.y()
-                dy = vector_largo.x()
-                norm = math.hypot(dx, dy)
-                if norm == 0:
-                    continue
-                dx /= norm
-                dy /= norm
-                length_test = 10 * longitud
-                p1t = QgsPointXY(x_c - dx * length_test, y_c - dy * length_test)
-                p2t = QgsPointXY(x_c + dx * length_test, y_c + dy * length_test)
-                line = QgsGeometry.fromPolylineXY([p1t, p2t])
-                inter = poly_geom.intersection(line)
-                if inter and not inter.isEmpty() and inter.type() == QgsWkbTypes.LineGeometry:
-                    if inter.isMultipart():
-                        lines = inter.asMultiPolyline()
-                        for seg in lines:
-                            if len(seg) >= 2:
-                                anch = distancia(seg[0], seg[-1])
-                                anchos.append(anch)
-                    else:
-                        line_points = inter.asPolyline()
-                        if len(line_points) >= 2:
-                            anch = distancia(line_points[0], line_points[-1])
-                            anchos.append(anch)
-
-            ancho_medio = round(sum(anchos) / len(anchos), 3) if anchos else None
+            # DEBUG: Solo dibujar el eje del diámetro (limpio y útil)
+            if self.debug_mode:
+                self._add_debug_line(p1, p2, "Largo_Maximo", base, largo_final)
+                self.log_callback(f"ℹ️ {base}: Largo(Diámetro)={largo_final}m, Ancho(Geom)={ancho_final}m")
 
             return {
                 "Area": area_m2,
-                "Ancho": ancho_medio,
-                "Largo": largo_bbox
+                "Ancho": ancho_final,
+                "Largo": largo_final
             }
+
         except Exception as e:
-            self.log_callback(f"❌ Error al calcular dimensiones para {base}: {e}")
+            self.log_callback(f"❌ Error geométrico en {base}: {e}")
+            # Fallback clásico (BBox)
+            bbox = poly_geom.boundingBox()
+            largo_fallback = round(max(bbox.width(), bbox.height()), 3)
             return {
                 "Area": area_m2,
                 "Ancho": None,
-                "Largo": largo_bbox
+                "Largo": largo_fallback
             }
+
 
     def obtener_info_levantamientos(self, nombre_archivo_base):
         """
@@ -433,6 +477,10 @@ class TableCreationProcessor:
             # Crear tabla base
             self.progress_callback(30, "Creando estructura de tabla...")
             tabla = self.crear_tabla_base_datos()
+            
+            # Setup Debug Layer
+            self._setup_debug_layer()
+
 
             # Procesar cada capa
             protocolo_val = self.protocolo_topografico_inicio

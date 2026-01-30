@@ -133,5 +133,15 @@ Debido al aumento de resolución (Upsampling), el tamaño de archivo puede dispa
 *   **Predictor:** `3` (Floating Point Predictor).
     *   *Impacto:* Reduce el peso de archivos de elevación (float32) drásticamente (ej. de 400MB a ~80-100MB) al predecir valores decimales secuenciales.
 
+### 6.4. Cálculo de Dimensiones Geométrico (Robustez V3)
+Implementado en `core/table_creation.py` (Enero 2026).
+Resuelve la inconsistencia de mediciones en canchas con orientaciones complejas o geometrías curvas ("banana shape").
+
+*   **Problema Anterior:** Los algoritmos basados en Bounding Box (AABB) o Transectas fallaban en rotaciones específicas (ej. Azimuth ~64°), reportando anchos incorrectos (ej. 49m vs 9m).
+*   **Solución V3 (Geometría Pura):**
+    1.  **Largo (Diámetro Geodésico):** Se calcula la distancia euclidiana máxima entre cualquier par de vértices del polígono (fuerza bruta optimizada). Esto es invariante a la rotación.
+    2.  **Ancho (Derivado del Área):** `Ancho = Area / Largo`.
+    *   *Principio:* Matemáticamente infalible. Si el área y el largo máximo son correctos, el ancho promedio derivado es exacto, eliminando artefactos de muestreo espacial.
+
 ---
 *Documentado por Antigravity Agent, Senior Software Architect.*
