@@ -438,14 +438,28 @@ La columna 'Comentarios Espesor' se crea/actualiza automáticamente en 'Tabla Ba
             if existing: layout_manager.removeLayout(existing)
             
             layout = QgsPrintLayout(project)
-            layout.setName(layout_name)
             
             context = QgsReadWriteContext()
             if not layout.readLayoutXml(doc.documentElement(), doc, context):
                 self.log_signal.emit("❌ Error al cargar la plantilla XML")
                 return False
-                
-            layout_manager.addLayout(layout)
+            
+            # IMPORTANTE: Asignar nombre DESPUÉS de leer el XML, porque readLayoutXml()
+            # sobrescribe el nombre con el que viene en la plantilla.
+            layout.setName(layout_name)
+            
+            # Añadir al manager y verificar éxito
+            if not layout_manager.addLayout(layout):
+                self.log_signal.emit(f"❌ Error: No se pudo añadir el layout '{layout_name}' al proyecto.")
+                return False
+            
+            # CRITICAL: Re-fetch the layout from the manager to get a stable reference.
+            # After addLayout(), the manager takes ownership of the C++ object.
+            # The original 'layout' Python wrapper can become stale/deleted.
+            layout = layout_manager.layoutByName(layout_name)
+            if not layout:
+                self.log_signal.emit(f"❌ Error crítico: No se pudo recuperar el layout '{layout_name}' después de añadirlo.")
+                return False
             
             # Config Atlas
             tabla_layer = None

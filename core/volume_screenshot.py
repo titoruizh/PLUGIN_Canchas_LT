@@ -1769,8 +1769,8 @@ class VolumeScreenshotProcessor:
                 if current_poly_geom:
                     pred_names, overlaps_info = self._get_overlapping_predecessors(current_poly_geom, processed_polygons_history)
                     if pred_names:
-                        canchas_anteriores_str = ", ".join(pred_names)
-                        self.log_callback(f"🧬 Predecesores detectados para {base}: {canchas_anteriores_str}")
+                        canchas_anteriores_str = pred_names[0] # Solo el predecesor inmediato (el más reciente)
+                        self.log_callback(f"🧬 Predecesor inmediato para {base}: {canchas_anteriores_str}")
                         
                         # Guardar referencias a las capas de los predecesores para el gráfico (limitado al top 2)
                         # Top 1 -> Base (Azul)
@@ -1779,7 +1779,7 @@ class VolumeScreenshotProcessor:
                             if p_name in triangulaciones_layers:
                                 predecessor_layers[p_name] = triangulaciones_layers[p_name]
                     else:
-                        canchas_anteriores_str = "Terreno Base"
+                        canchas_anteriores_str = dem_real_name # Nombre real del archivo DEM base (ej. DEM_MP_250101)
                         
                     # Agregar a historia
                     processed_polygons_history.append({

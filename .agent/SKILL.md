@@ -89,6 +89,9 @@ El sistema procesa la información en 4 fases secuenciales estrictas, garantizan
 QGIS bloquea archivos raster si las capas están cargadas.
 *   **Solución:** Se implementó una gestión agresiva de limpieza (`cleanup_temp_files`) y cierre de proveedores de datos (`QgsRasterLayer` references) para permitir la sobrescritura de archivos temporales en Windows.
 
+**PyQt/C++ Object Ownership Pitfall:**
+Cuando se añade un `QgsPrintLayout` al `QgsLayoutManager` via `addLayout()`, el manager toma propiedad del objeto C++. El wrapper Python original se vuelve inválido ("stale"). **Solución:** Siempre re-obtener el layout con `layoutByName()` después de `addLayout()` antes de llamar a métodos como `.atlas()`.
+
 ### 5.2. Persistencia de Sesión
 El uso de `QSettings` permite que el Ingeniero Topógrafo mantenga su contexto de trabajo (`PROC_ROOT`) entre reinicios del plugin, vital para flujos de trabajo que duran horas.
 
