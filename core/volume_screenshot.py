@@ -1195,13 +1195,21 @@ class VolumeScreenshotProcessor:
                 if not np.any(mask):
                     return None, None
                 
-                # Usar array enmascarado para min/max
-                # Llenamos con valores extremos inversos para que no sean elegidos
-                masked_arr_min = np.where(mask, arr, np.inf)
-                masked_arr_max = np.where(mask, arr, -np.inf)
+                # --- CORRECCIÓN CRÍTICA (Enero 2026) ---
+                # Usar valor ABSOLUTO para encontrar "Espesor Mínimo" y "Espesor Máximo"
+                # Espesor Mínimo = Valor más cercano a 0 (el más delgado)
+                # Espesor Máximo = Valor más alejado de 0 (el más grueso, sea corte o relleno)
+                abs_arr = np.abs(arr)
                 
-                min_idx = np.unravel_index(np.argmin(masked_arr_min), arr.shape)
-                max_idx = np.unravel_index(np.argmax(masked_arr_max), arr.shape)
+                # Llenamos con infinito para encontrar el mínimo, y -infinito para el máximo
+                masked_abs_min = np.where(mask, abs_arr, np.inf)
+                masked_abs_max = np.where(mask, abs_arr, -np.inf)
+                
+                # Indices del Mínimo Absoluto (El más delgado)
+                min_idx = np.unravel_index(np.argmin(masked_abs_min), arr.shape)
+                
+                # Indices del Máximo Absoluto (El más grueso)
+                max_idx = np.unravel_index(np.argmax(masked_abs_max), arr.shape)
                 
                 # GDAL GeoTransform: 
                 # [0] top left x, [1] w-res, [2] rot, [3] top left y, [4] rot, [5] h-res

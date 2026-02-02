@@ -231,6 +231,43 @@ La columna 'Comentarios Espesor' se crea/actualiza automáticamente en 'Tabla Ba
             self.log_signal.emit(f"📊 Registros copiados: {resultado.get('registros_copiados', 0)}")
             self.log_signal.emit(f"📊 Nuevos registros: {resultado.get('nuevos_ids', 0)}")
             self.log_signal.emit(f"📋 Total de registros en DATOS HISTORICOS: {resultado.get('total_registros', 0)}")
+            self.log_signal.emit(f"📋 Total de registros en DATOS HISTORICOS: {resultado.get('total_registros', 0)}")
+            
+            # 1.5. Carga de Reportes de Laboratorio (Excel)
+            from ...core.lab_report import LabReportLoader
+            from qgis.core import QgsProject
+            
+            # Buscar archivo Excel
+            plugin_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            report_folder = os.path.join(plugin_dir, "update N Informe")
+            excel_path = None
+            if os.path.exists(report_folder):
+                for f in os.listdir(report_folder):
+                    if f.endswith(".xlsx") and not f.startswith("~$"):
+                        excel_path = os.path.join(report_folder, f)
+                        break
+            
+            if excel_path:
+                self.log_signal.emit(f"🧪 Detectado reporte de laboratorio: {os.path.basename(excel_path)}")
+                
+                # Buscar capa Tabla Base Datos
+                layer_base = None
+                for l in QgsProject.instance().mapLayers().values():
+                    if l.name() == "Tabla Base Datos":
+                        layer_base = l
+                        break
+                
+                if layer_base:
+                    loader = LabReportLoader(log_callback=self.log_signal.emit)
+                    success_lab, msg_lab, stats_lab = loader.load_excel_and_enrich(excel_path, layer_base)
+                    if success_lab:
+                        self.log_signal.emit(f"✅ {msg_lab}")
+                    else:
+                        self.log_signal.emit(f"⚠️ {msg_lab}")
+                else:
+                     self.log_signal.emit("⚠️ No se encontró capa 'Tabla Base Datos', saltando integración de laboratorio.")
+            else:
+                 self.log_signal.emit("ℹ️ No se encontró reporte Excel en 'update N Informe', saltando este paso.")
             
             # 2. Análisis Histórico
             self.log_signal.emit("📈 Paso 2: Iniciando análisis histórico...")
