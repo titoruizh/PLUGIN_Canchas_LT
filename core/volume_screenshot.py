@@ -28,10 +28,10 @@ from qgis.core import (
     QgsProject, QgsMapLayer, QgsCoordinateReferenceSystem, QgsRasterLayer, 
     QgsExpressionContextUtils, QgsRectangle, QgsMapSettings, QgsMapRendererSequentialJob,
     QgsRasterShader, QgsColorRampShader, QgsSingleBandPseudoColorRenderer,
-    QgsRasterBandStats
+    QgsRasterBandStats, QgsPointXY
 )
 from qgis.analysis import QgsRasterCalculator, QgsRasterCalculatorEntry
-from PyQt5.QtGui import QColor
+from PyQt5.QtGui import QColor, QBrush
 from PyQt5.QtCore import QSize
 from qgis.utils import iface
 import processing
@@ -598,6 +598,10 @@ class VolumeScreenshotProcessor:
                 arr = np.ma.masked_invalid(arr)
 
             valid_espesores = np.abs(arr[~arr.mask])
+            
+            # Filtrar valores de 0 exacto (fondo o sin cambio) para evitar sesgar estadísticas
+            valid_espesores = valid_espesores[valid_espesores > 1e-6]
+            
             if valid_espesores.size > 0:
                 # Valores originales (sin filtros)
                 original_min = np.min(valid_espesores)
@@ -979,6 +983,109 @@ class VolumeScreenshotProcessor:
             
             self.log_callback(f"📏 Línea de perfil con etiqueta agregada al pantallazo")
         
+        # --- MARCADORES MIN/MAX ESPESOR Y LEYENDA SUTIL ---
+        try:
+            min_pt, max_pt = self._find_min_max_coords(diff_layer)
+            if min_pt and max_pt:
+                # Usar un nuevo painter para asegurar independencia
+                painter_m = QPainter(img)
+                painter_m.setRenderHint(QPainter.Antialiasing)
+                
+                # Conversión mapa -> pixel
+                map_to_pixel = render.mapSettings().mapToPixel()
+                min_px = map_to_pixel.transform(min_pt)
+                max_px = map_to_pixel.transform(max_pt)
+                
+                # Color Naranjo para ambos
+                color_marker = QColor('#ff7f0e') 
+                
+                # Pens para borde blanco (halo) y color principal
+                pen_halo = QPen(QColor('white'))
+                pen_halo.setWidth(5)
+                
+                pen_main = QPen(color_marker)
+                pen_main.setWidth(3)
+                
+                # 1. MINIMO -> 'X' con Halo
+                size = 8
+                mx, my = int(min_px.x()), int(min_px.y())
+                
+                # Dibujar halo blanco primero
+                painter_m.setPen(pen_halo)
+                painter_m.drawLine(mx - size, my - size, mx + size, my + size)
+                painter_m.drawLine(mx - size, my + size, mx + size, my - size)
+                
+                # Dibujar X naranja encima
+                painter_m.setPen(pen_main)
+                painter_m.drawLine(mx - size, my - size, mx + size, my + size)
+                painter_m.drawLine(mx - size, my + size, mx + size, my - size)
+                
+                # 2. MAXIMO -> Círculo con Borde Blanco
+                # Halo/Borde exterior
+                painter_m.setPen(Qt.NoPen)
+                painter_m.setBrush(QBrush(QColor('white')))
+                painter_m.drawEllipse(QPointF(max_px.x(), max_px.y()), size + 2, size + 2)
+                
+                # Círculo naranja interior
+                painter_m.setBrush(QBrush(color_marker))
+                painter_m.drawEllipse(QPointF(max_px.x(), max_px.y()), size, size)
+                
+                # --- LEYENDA (MOVIDA A ARRIBA DERECHA) ---
+                painter_m.setPen(Qt.NoPen)
+                painter_m.setBrush(QColor(255, 255, 255, 210))
+                
+                # Dimensiones caja leyenda
+                leg_w = 180
+                leg_h = 60
+                pad = 10
+                
+                # Posición Top-Right
+                leg_x = img.width() - leg_w - pad
+                leg_y = pad  # Arriba con un pequeño margen
+                
+                painter_m.drawRect(leg_x, leg_y, leg_w, leg_h)
+                
+                # Textos
+                painter_m.setPen(QColor(40, 40, 40))
+                font = painter_m.font()
+                font.setPointSize(9)
+                font.setBold(True)
+                painter_m.setFont(font)
+                
+                # Fila 1: Minimo (X)
+                row1_y = leg_y + 22
+                painter_m.save()
+                
+                lx, ly = leg_x + 15, row1_y - 4
+                ls = 4
+                
+                # Icono X en leyenda
+                painter_m.setPen(QPen(color_marker, 2))
+                painter_m.drawLine(lx-ls, ly-ls, lx+ls, ly+ls)
+                painter_m.drawLine(lx-ls, ly+ls, lx+ls, ly-ls)
+                painter_m.restore()
+                
+                painter_m.setPen(QColor(40, 40, 40))
+                painter_m.drawText(leg_x + 30, row1_y, "Esp. Mínimo")
+                
+                # Fila 2: Maximo (Círculo)
+                row2_y = row1_y + 25
+                painter_m.save()
+                
+                # Icono Círculo en leyenda
+                painter_m.setBrush(QBrush(color_marker))
+                painter_m.setPen(QPen(QColor('white'), 1)) # Borde blanco fino en leyenda
+                painter_m.drawEllipse(QPointF(leg_x + 15, row2_y - 4), ls+1, ls+1)
+                painter_m.restore()
+                
+                painter_m.setPen(QColor(40, 40, 40))
+                painter_m.drawText(leg_x + 30, row2_y, "Esp. Máximo")
+                
+                painter_m.end()
+
+        except Exception as e:
+            self.log_callback(f"⚠️ Error dibujando marcas min/max: {e}")
+
         success = img.save(archivo_salida, "jpg")
         if success:
             self.log_callback(f"✅ Pantallazo de diferencia DEM exportado: {archivo_salida}")
@@ -1054,6 +1161,67 @@ class VolumeScreenshotProcessor:
         diff_layer.setRenderer(original_renderer)
         diff_layer.triggerRepaint()
         iface.mapCanvas().refreshAllLayers()
+
+    def _find_min_max_coords(self, layer):
+        """Encuentra las coordenadas (QgsPointXY) de los valores mínimo y máximo en el raster."""
+        try:
+            provider = layer.dataProvider()
+            source_path = layer.source()
+            
+            # Intentar usar GDAL si el archivo existe (más rápido y robusto)
+            if os.path.exists(source_path):
+                ds = gdal.Open(source_path)
+                band = ds.GetRasterBand(1)
+                arr = band.ReadAsArray()
+                nodata = band.GetNoDataValue()
+                
+                # Crear máscara de datos válidos
+                mask = np.ones_like(arr, dtype=bool)
+                
+                # 1. Filtrar NoData
+                if nodata is not None:
+                    # Usar isclose para flotantes
+                    if np.isnan(nodata):
+                        mask = ~np.isnan(arr)
+                    else:
+                        mask = ~np.isclose(arr, nodata)
+                
+                # 2. Filtrar ceros exactos (asumiendo que son área fuera del polígono/borde)
+                # Ojo: Si un espesor es realmente 0, lo filtraremos. 
+                # Pero para min/max visuales de "diferencia", 0 suele ser "sin cambio" o fondo.
+                mask &= (arr != 0)
+
+                # Si no hay datos válidos, retornar None
+                if not np.any(mask):
+                    return None, None
+                
+                # Usar array enmascarado para min/max
+                # Llenamos con valores extremos inversos para que no sean elegidos
+                masked_arr_min = np.where(mask, arr, np.inf)
+                masked_arr_max = np.where(mask, arr, -np.inf)
+                
+                min_idx = np.unravel_index(np.argmin(masked_arr_min), arr.shape)
+                max_idx = np.unravel_index(np.argmax(masked_arr_max), arr.shape)
+                
+                # GDAL GeoTransform: 
+                # [0] top left x, [1] w-res, [2] rot, [3] top left y, [4] rot, [5] h-res
+                gt = ds.GetGeoTransform()
+                
+                # Indices son (row, col) sea (y, x)
+                # Coordenada centro pixel = Origen + Indice * Res + Res/2
+                min_x = gt[0] + min_idx[1] * gt[1] + gt[1]/2
+                min_y = gt[3] + min_idx[0] * gt[5] + gt[5]/2
+                
+                max_x = gt[0] + max_idx[1] * gt[1] + gt[1]/2
+                max_y = gt[3] + max_idx[0] * gt[5] + gt[5]/2
+                
+                return QgsPointXY(min_x, min_y), QgsPointXY(max_x, max_y)
+            
+            return None, None
+            
+        except Exception as e:
+            self.log_callback(f"⚠️ Error buscando coords min/max: {e}")
+            return None, None
 
     def cleanup_temp_files(self):
         """Elimina archivos temporales creados durante el proceso."""
