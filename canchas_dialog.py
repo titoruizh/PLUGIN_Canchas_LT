@@ -4,7 +4,7 @@ from qgis.PyQt import QtWidgets, QtCore
 from qgis.PyQt.QtCore import pyqtSignal, QThread, QSettings, QTime
 from qgis.PyQt.QtWidgets import (QDialog, QTabWidget, QVBoxLayout, QHBoxLayout, 
                                 QPushButton, QTextEdit, QProgressBar, QLabel, 
-                                QLineEdit, QFileDialog)
+                                QLineEdit, QFileDialog, QFrame)
 from .gui.tabs.validation_tab import ValidationTab
 from .gui.tabs.processing_tab import ProcessingTab
 from .gui.tabs.analysis_tab import AnalysisTab
@@ -36,17 +36,21 @@ class CanchasDialog(QDialog):
         return self.validation_tab.img_folder
         
     def setupUi(self):
-        """Crear la interfaz con pestañas reorganizada (1-2-3-4)"""
+        """Crear la interfaz con Layout Horizontal (Sidebar a la derecha)"""
         self.setWindowTitle("Canchas Las Tortolas - Procesador Topográfico")
-        self.setMinimumSize(800, 600)
+        self.setMinimumSize(1050, 700) # Aumentar ancho para acomodar sidebar
         
-        # Layout principal
-        layout = QVBoxLayout()
+        # Layout principal HORIZONTAL (Split View)
+        main_layout = QHBoxLayout()
+        
+        # ==========================================
+        # PANEL IZQUIERDO (Pestañas + Progreso)
+        # ==========================================
+        left_layout = QVBoxLayout()
         
         # Crear widget de pestañas principales (solo 3)
         self.tab_widget = QTabWidget()
         
-        # Crear las pestañas principales
         # Crear las pestañas principales
         # Pestaña 1: Validación (Refactorizada)
         self.validation_tab = ValidationTab()
@@ -83,27 +87,77 @@ class CanchasDialog(QDialog):
         
         self.tab_widget.addTab(self.reports_tab, "4. Datos Reporte")
         
-        layout.addWidget(self.tab_widget)
+        left_layout.addWidget(self.tab_widget)
         
-        # Barra de progreso global
+        # Barra de progreso global (En el panel izquierdo)
         self.progress_bar = QProgressBar()
         self.progress_bar.setVisible(False)
-        layout.addWidget(self.progress_bar)
+        left_layout.addWidget(self.progress_bar)
         
-        # Log de resultados
+        # Agregar Panel Izquierdo al Principal (Stretch 70%)
+        main_layout.addLayout(left_layout, 7)
+        
+        # ==========================================
+        # PANEL DERECHO (Consola / Sidebar)
+        # ==========================================
+        self.right_container = QFrame()
+        self.right_container.setFrameShape(QFrame.StyledPanel)
+        # Estilo "Expert UI": Fondo claro, borde sutil a la izquierda
+        self.right_container.setStyleSheet("""
+            QFrame {
+                background-color: #f8f9fa; 
+                border-left: 1px solid #e0e0e0;
+                border-radius: 0px;
+            }
+        """)
+        
+        right_layout = QVBoxLayout(self.right_container)
+        right_layout.setContentsMargins(10, 15, 10, 10) # Márgenes internos
+        
+        # Título del Sidebar
+        lbl_log = QLabel("📋 Historial de Operaciones")
+        lbl_log.setStyleSheet("font-weight: bold; color: #555; font-size: 12px; border: none; margin-bottom: 5px;")
+        right_layout.addWidget(lbl_log)
+        
+        # Log de resultados (Expandible)
         self.log_text = QTextEdit()
-        self.log_text.setMaximumHeight(150)
         self.log_text.setPlaceholderText("Los resultados de las operaciones aparecerán aquí...")
-        layout.addWidget(self.log_text)
+        # Estilo de consola limpia
+        self.log_text.setStyleSheet("""
+            QTextEdit {
+                background-color: white;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                color: #333;
+                font-family: Consolas, 'Courier New', monospace;
+                font-size: 11px;
+            }
+        """)
+        self.log_text.setReadOnly(True)
+        right_layout.addWidget(self.log_text)
         
-        # Botones finales
-        button_layout = QHBoxLayout()
-        self.btn_close = QPushButton("Cerrar")
-        button_layout.addStretch()
-        button_layout.addWidget(self.btn_close)
-        layout.addLayout(button_layout)
+        # Botón Cerrar (Al fondo del sidebar)
+        self.btn_close = QPushButton("Cerrar Plugin")
+        self.btn_close.setCursor(QtCore.Qt.PointingHandCursor)
+        self.btn_close.setStyleSheet("""
+            QPushButton {
+                background-color: #e74c3c; 
+                color: white; 
+                border-radius: 4px;
+                padding: 8px;
+                font-weight: bold;
+                border: none;
+            }
+            QPushButton:hover {
+                background-color: #c0392b;
+            }
+        """)
+        right_layout.addWidget(self.btn_close)
         
-        self.setLayout(layout)
+        # Agregar Panel Derecho al Principal (Stretch 30%)
+        main_layout.addWidget(self.right_container, 3)
+        
+        self.setLayout(main_layout)
     
     
 
