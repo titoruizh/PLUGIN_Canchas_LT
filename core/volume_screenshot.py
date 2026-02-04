@@ -1972,12 +1972,38 @@ class VolumeScreenshotProcessor:
                             grandparent_label = ""
                             
                             if pred_names:
-                                # v6.4: Usar Snapshot Histórico (Estado T-2)
-                                # Si tenemos un snapshot del ciclo anterior, ese es nuestro suelo acumulado PREVIO a la Base actual.
+                                # Logic specific to when a predecessor exists (e.g. setting labels if needed)
+                                pass
+
+                            # 3. Capa Anterior (Bottom) - SIEMPRE VISIBLE (Historia Continua)
+                            # v6.5: Decoupled from overlap check. Always show history if we have it.
+                            grandparent_layer = None
+                            grandparent_label = ""
+                            
+                            # CASO ESPECIAL: Si Base = DEM_MURO (primera cancha), NO hay "Anterior".
+                            # v6.6 DOCUMENTACIÓN FUTURA:
+                            # Actualmente 'tin_base' siempre es el objeto layer del DEM de trabajo (cuyo nombre original contiene "DEM_"),
+                            # por lo que 'is_first_cancha' evalúa SIEMPRE a True en este loop.
+                            # Esto causa que la capa "Anterior" nunca se muestre, lo cual es el comportamiento deseado por el usuario (solo 2 líneas).
+                            # SI SE DESEA ACTIVAR EN EL FUTURO:
+                            # Cambiar la condición a algo que detecte iteraciones, ej:
+                            # is_first_cancha = self.processed_count == 0 (necesitaría contador en loop)
+                            # O verificar si el snapshot existe y es distinto al DEM Base actual.
+                            is_first_cancha = "DEM_" in str(tin_base.name()) if tin_base else False
+                            
+                            if not is_first_cancha:
+                                # Priority 1: Snapshot (T-2)
                                 if self.last_dem_snapshot_path and os.path.exists(self.last_dem_snapshot_path):
                                      grandparent_layer = QgsRasterLayer(self.last_dem_snapshot_path, "Anterior (Snapshot)")
+                                     if grandparent_layer.isValid():
+                                         grandparent_label = "Superficie anterior"
+                                         self.log_callback(f"📸 Snapshot cargado OK: {os.path.basename(self.last_dem_snapshot_path)}")
+                                     else:
+                                         self.log_callback(f"❌ Snapshot INVALIDO: {self.last_dem_snapshot_path}")
+                                         grandparent_layer = None
                                 else:
-                                    # Fallback: Si es el primer ciclo o no hay snapshot, usar Original
+                                    # Priority 2: Original Virgin DEM (Fallback)
+                                    self.log_callback(f"⚠️ No hay snapshot disponible. Usando DEM Original como fallback.")
                                     if dem_real_name in self.original_dem_paths:
                                         if dem_real_name in self._original_raster_cache:
                                             grandparent_layer = self._original_raster_cache[dem_real_name]
@@ -1986,8 +2012,8 @@ class VolumeScreenshotProcessor:
                                             grandparent_layer = QgsRasterLayer(orig_path, "Original")
                                             if grandparent_layer.isValid():
                                                 self._original_raster_cache[dem_real_name] = grandparent_layer
-                                
-                                grandparent_label = "Superficie anterior"
+                                        
+                                        grandparent_label = "Superficie anterior"
 
                             if grandparent_layer and grandparent_layer.isValid():
                                 layers_map['Anterior'] = grandparent_layer
