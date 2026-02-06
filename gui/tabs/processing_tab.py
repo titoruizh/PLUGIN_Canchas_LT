@@ -1,7 +1,7 @@
-# -*- coding: utf-8 -*-
 from qgis.PyQt import QtWidgets, QtCore
 from qgis.PyQt.QtCore import pyqtSignal
-from qgis.PyQt.QtWidgets import (QWidget, QVBoxLayout, QPushButton, QLabel, QGroupBox)
+from qgis.PyQt.QtWidgets import (QWidget, QVBoxLayout, QPushButton, QLabel, QGroupBox, QCheckBox, QHBoxLayout)
+from ...gui.styles import Styles
 
 class ProcessingTab(QWidget):
     """
@@ -21,50 +21,71 @@ class ProcessingTab(QWidget):
         
     def setupUi(self):
         layout = QVBoxLayout()
+        layout.setSpacing(20) # Más aire
         
         # Título y descripción
         title = QLabel("🗺️ PROCESAMIENTO ESPACIAL")
-        title.setStyleSheet("font-weight: bold; font-size: 14px; color: #F18F01;")
+        title.setStyleSheet(f"font-weight: bold; font-size: 14px; color: {Styles.Theme.PRIMARY};")
         layout.addWidget(title)
         
         desc = QLabel("Genera capas de puntos, polígonos y triangulaciones a partir de archivos validados")
-        desc.setStyleSheet("color: gray; margin-bottom: 10px;")
+        desc.setStyleSheet(f"color: {Styles.Theme.TEXT_MUTED}; margin-bottom: 10px;")
         layout.addWidget(desc)
         
         # Grupo de salidas esperadas
         output_group = QGroupBox("📤 Salidas que se generarán")
+        output_group.setStyleSheet(Styles.get_card_style())
         output_layout = QVBoxLayout()
         
         outputs_info = QLabel("""• Grupo: Procesamiento_YYMMDD (contraído y apagado)
     └── Puntos/ (capas de puntos de archivos CSV)
     └── Poligonos/ (concave hulls de CSV, polígonos suavizados de ASC)
     └── Triangulaciones/ (TIN recortados de CSV, rasters ASC)""")
-        outputs_info.setStyleSheet("font-family: 'Courier New'; color: #555; background-color: #f8f8f8; padding: 10px; border: 1px solid #ddd;")
+        outputs_info.setStyleSheet(f"font-family: 'Courier New'; color: {Styles.Theme.TEXT_MAIN}; background-color: {Styles.Theme.BG_APP}; padding: 15px; border-radius: 4px; border-left: 3px solid {Styles.Theme.ACCENT};")
         output_layout.addWidget(outputs_info)
         
         output_group.setLayout(output_layout)
         layout.addWidget(output_group)
+
+        # Grupo de Exportación (NUEVO)
+        export_group = QGroupBox("💾 Opciones de Exportación")
+        export_group.setStyleSheet(Styles.get_card_style())
+        export_layout = QVBoxLayout()
+        export_layout.setSpacing(10)
+        
+        export_desc = QLabel("Seleccione los formatos adicionales a generar en la carpeta 'Geoespacial':")
+        export_desc.setStyleSheet(f"color: {Styles.Theme.TEXT_MUTED}; font-size: 12px;")
+        export_layout.addWidget(export_desc)
+
+        # Container para checkboxes en horizontal o grid
+        checks_layout = QHBoxLayout()
+        
+        self.chk_points = QCheckBox("Puntos (.csv)")
+        self.chk_points.setChecked(False)
+        self.chk_points.setStyleSheet(f"font-size: 13px; color: {Styles.Theme.TEXT_MAIN};")
+        
+        self.chk_polygons = QCheckBox("Polígonos (.shp)")
+        self.chk_polygons.setChecked(True)
+        self.chk_polygons.setStyleSheet(f"font-size: 13px; color: {Styles.Theme.TEXT_MAIN};")
+        
+        self.chk_tin = QCheckBox("Triangulaciones (.tif)")
+        self.chk_tin.setChecked(True)
+        self.chk_tin.setStyleSheet(f"font-size: 13px; color: {Styles.Theme.TEXT_MAIN};")
+        
+        checks_layout.addWidget(self.chk_points)
+        checks_layout.addWidget(self.chk_polygons)
+        checks_layout.addWidget(self.chk_tin)
+        checks_layout.addStretch()
+        
+        export_layout.addLayout(checks_layout)
+        export_group.setLayout(export_layout)
+        layout.addWidget(export_group)
         
         layout.addStretch()
         
-        # Botón ejecutar con estilo
+        # Botón ejecutar con estilo HERO
         self.btn_processing = QPushButton("⚙️ Generar Capas Espaciales")
-        self.btn_processing.setStyleSheet("""
-            QPushButton {
-                background-color: #F18F01; 
-                color: white; 
-                font-weight: bold; 
-                padding: 10px; 
-                border: none; 
-                border-radius: 5px;
-            }
-            QPushButton:hover {
-                background-color: #9c5d03;
-            }
-            QPushButton:pressed {
-                background-color: #164B73;
-            }
-        """)
+        self.btn_processing.setStyleSheet(Styles.get_primary_button_style())
         self.btn_processing.clicked.connect(self.emit_execute_signal)
         layout.addWidget(self.btn_processing)
         
@@ -97,6 +118,16 @@ class ProcessingTab(QWidget):
         self.emit_log("⚙️ Iniciando procesamiento espacial...")
         self.emit_log(f"📁 PROC_ROOT: {proc_root}")
         
+        # Recopilar opciones de exportación
+        export_options = {
+            'points': self.chk_points.isChecked(),
+            'polygons': self.chk_polygons.isChecked(),
+            'tin': self.chk_tin.isChecked()
+        }
+        
+        if any(export_options.values()):
+            self.emit_log(f"💾 Opciones de exportación activas: {export_options}")
+        
         # Parámetros fijos de procesamiento optimizados (configurables en código si fuese necesario)
         pixel_size = 0.25  # Resolución TIN en metros (Estándar 25cm)
         suavizado_tolerance = 1.0  # Tolerancia suavizado ASC en metros  
@@ -121,7 +152,7 @@ class ProcessingTab(QWidget):
             )
             
             # Ejecutar procesamiento completo
-            resultado = processor.ejecutar_procesamiento_completo()
+            resultado = processor.ejecutar_procesamiento_completo(export_options)
             
             if resultado['success']:
                 self.emit_log("🎉 ¡Procesamiento espacial completado exitosamente!")

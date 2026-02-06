@@ -1,11 +1,10 @@
-# -*- coding: utf-8 -*-
-import os
 from qgis.PyQt import QtWidgets, QtCore
 from qgis.PyQt.QtCore import pyqtSignal
 from qgis.PyQt.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, 
                                 QPushButton, QLabel, QGroupBox, QSpinBox)
 from qgis.utils import iface
 from datetime import datetime
+from ...gui.styles import Styles
 
 class ReportsTab(QWidget):
     """
@@ -31,28 +30,29 @@ class ReportsTab(QWidget):
         icon_label = QLabel("📄")
         icon_label.setStyleSheet("font-size: 24px; margin-right: 10px;")
         title_label = QLabel("DATOS PARA REPORTE")
-        title_label.setStyleSheet("font-weight: bold; font-size: 16px; color: #2E4057;")
+        title_label.setStyleSheet(f"font-weight: bold; font-size: 16px; color: {Styles.Theme.PRIMARY};")
         header_layout.addWidget(icon_label)
         header_layout.addWidget(title_label)
         header_layout.addStretch()
         layout.addLayout(header_layout)
         
         desc = QLabel("Genera datos auxiliares para reportes y realiza análisis histórico")
-        desc.setStyleSheet("color: gray; margin-bottom: 15px; font-size: 12px;")
+        desc.setStyleSheet(f"color: {Styles.Theme.TEXT_MUTED}; margin-bottom: 15px; font-size: 12px;")
         layout.addWidget(desc)
         
         # Configuración de reportes
         config_group = QGroupBox("📋 Tablas utilizadas")
+        config_group.setStyleSheet(Styles.get_card_style())
         config_layout = QVBoxLayout()
         
         # Info de la tabla base
         table_info = QLabel("📝 Tabla Base Datos: Contiene los datos actuales")
-        table_info.setStyleSheet("color: #666; margin: 5px 0;")
+        table_info.setStyleSheet(f"color: {Styles.Theme.TEXT_MUTED}; margin: 5px 0;")
         config_layout.addWidget(table_info)
         
         # Info de la tabla histórica
         table_hist_info = QLabel("📊 DATOS HISTORICOS: Almacena todos los datos históricos y actuales")
-        table_hist_info.setStyleSheet("color: #666; margin: 5px 0;")
+        table_hist_info.setStyleSheet(f"color: {Styles.Theme.TEXT_MUTED}; margin: 5px 0;")
         config_layout.addWidget(table_hist_info)
         
         config_group.setLayout(config_layout)
@@ -60,6 +60,7 @@ class ReportsTab(QWidget):
         
         # Proceso de Fusión
         merge_group = QGroupBox("🔄 Proceso de Fusión de Datos")
+        merge_group.setStyleSheet(Styles.get_card_style())
         merge_layout = QVBoxLayout()
         
         merge_info = QLabel("""Al ejecutar "Generar Datos Reporte", se realizan las siguientes acciones:
@@ -74,7 +75,7 @@ class ReportsTab(QWidget):
 
         La tabla "DATOS HISTORICOS" queda actualizada con todos los datos procesados
         y es la que debe utilizarse como fuente para reportes.""")
-        merge_info.setStyleSheet("font-family: 'Courier New'; color: #555; background-color: #f8f8f8; padding: 10px; border: 1px solid #ddd; border-radius: 3px;")
+        merge_info.setStyleSheet(f"font-family: 'Courier New'; color: {Styles.Theme.TEXT_MAIN}; background-color: {Styles.Theme.BG_APP}; padding: 10px; border: 1px solid {Styles.Theme.BORDER_LIGHT}; border-radius: 3px;")
         merge_layout.addWidget(merge_info)
         
         merge_group.setLayout(merge_layout)
@@ -82,6 +83,7 @@ class ReportsTab(QWidget):
         
         # Análisis histórico
         historical_group = QGroupBox("📈 Análisis Histórico")
+        historical_group.setStyleSheet(Styles.get_card_style())
         historical_layout = QVBoxLayout()
         
         # Periodo para crecimiento anual
@@ -92,6 +94,7 @@ class ReportsTab(QWidget):
         self.dias_crecimiento.setMaximum(730)  # 2 años
         self.dias_crecimiento.setValue(365)    # 1 año por defecto
         self.dias_crecimiento.setSuffix(" días")
+        self.dias_crecimiento.setStyleSheet(Styles.get_spinbox_style())
         period_layout.addWidget(self.dias_crecimiento)
         period_layout.addStretch()
         historical_layout.addLayout(period_layout)
@@ -118,7 +121,7 @@ class ReportsTab(QWidget):
 5️⃣ "Corte Anual Acumulado": Suma total de Cut en el período
     • Suma todos los valores de corte del último año
     • Formato: Número decimal (ej: 50.5350)""")
-        columnas_info.setStyleSheet("font-family: 'Courier New'; color: #555; background-color: #f0f0ff; padding: 10px; border: 1px solid #ddd; border-radius: 3px; margin-top: 10px;")
+        columnas_info.setStyleSheet(f"font-family: 'Courier New'; color: {Styles.Theme.TEXT_MAIN}; background-color: {Styles.Theme.BG_APP}; padding: 10px; border: 1px solid {Styles.Theme.BORDER_LIGHT}; border-radius: 3px; margin-top: 10px;")
         historical_layout.addWidget(columnas_info)
         
         historical_group.setLayout(historical_layout)
@@ -126,6 +129,7 @@ class ReportsTab(QWidget):
         
         # Clasificación de Espesores
         clasificacion_group = QGroupBox("📏 Clasificación Automática de Espesores")
+        clasificacion_group.setStyleSheet(Styles.get_card_style())
         clasificacion_layout = QVBoxLayout()
         
         clasificacion_info = QLabel("""Durante el proceso de "Generar Datos Reporte" se ejecutan automáticamente:
@@ -139,7 +143,7 @@ class ReportsTab(QWidget):
 • Menor a -0.2 = "Corte"
 
 La columna 'Comentarios Espesor' se crea/actualiza automáticamente en 'Tabla Base Datos'.""")
-        clasificacion_info.setStyleSheet("font-family: 'Courier New'; color: #555; background-color: #f9f9f9; padding: 10px; border: 1px solid #ddd; border-radius: 3px;")
+        clasificacion_info.setStyleSheet(f"font-family: 'Courier New'; color: {Styles.Theme.TEXT_MAIN}; background-color: {Styles.Theme.BG_APP}; padding: 10px; border: 1px solid {Styles.Theme.BORDER_LIGHT}; border-radius: 3px;")
         clasificacion_layout.addWidget(clasificacion_info)
         
         clasificacion_group.setLayout(clasificacion_layout)
@@ -149,46 +153,13 @@ La columna 'Comentarios Espesor' se crea/actualiza automáticamente en 'Tabla Ba
         
         # Botón ejecutar reporte
         self.btn_reports = QPushButton("🚀 Generar Datos Reporte")
-        self.btn_reports.setStyleSheet("""
-            QPushButton {
-                background-color: #2E4057; 
-                color: white; 
-                font-weight: bold; 
-                padding: 12px; 
-                border: none; 
-                border-radius: 5px;
-                font-size: 13px;
-            }
-            QPushButton:hover {
-                background-color: #3D5A75;
-            }
-            QPushButton:pressed {
-                background-color: #1E2B3A;
-            }
-        """)
+        self.btn_reports.setStyleSheet(Styles.get_primary_button_style())
         self.btn_reports.clicked.connect(self.execute_reports_signal.emit)
         layout.addWidget(self.btn_reports)
         
         # Botón para abrir el compositor
         self.btn_open_composer = QPushButton("🖨️ Abrir Compositor")
-        self.btn_open_composer.setStyleSheet("""
-            QPushButton {
-                background-color: #2E4057; 
-                color: white; 
-                font-weight: bold; 
-                padding: 12px; 
-                border: none; 
-                border-radius: 5px;
-                font-size: 13px;
-                margin-top: 5px;
-            }
-            QPushButton:hover {
-                background-color: #3D5A75;
-            }
-            QPushButton:pressed {
-                background-color: #1E2B3A;
-            }
-        """)
+        self.btn_open_composer.setStyleSheet(Styles.get_primary_button_style())
         self.btn_open_composer.clicked.connect(self.execute_composer_signal.emit)
         layout.addWidget(self.btn_open_composer)
         

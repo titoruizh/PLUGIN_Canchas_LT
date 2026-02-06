@@ -700,7 +700,7 @@ class ProcessingProcessor:
     # MÉTODO PRINCIPAL
     # =========================
 
-    def ejecutar_procesamiento_completo(self):
+    def ejecutar_procesamiento_completo(self, export_options=None):
         """Ejecutar todo el proceso de procesamiento espacial - MÉTODO PRINCIPAL"""
         try:
             self.progress_callback(5, "Iniciando procesamiento espacial...")
@@ -801,7 +801,10 @@ class ProcessingProcessor:
                 if nombres_fallidos:
                     self.log_callback(f"   Fallidas: {', '.join(nombres_fallidos)}")
 
-            # Generar resumen final (igual que el script original)
+            # NUEVO: Exportar resultados si se seleccionaron opciones
+            if export_options:
+                self.progress_callback(90, "Exportando resultados...")
+                self.exportar_resultados(puntos_group, poligonos_group, triangulaciones_group, export_options)
             self.progress_callback(90, "Generando resumen...")
             self.generar_resumen_final(puntos_group, poligonos_group, triangulaciones_group, capa)
 
@@ -826,3 +829,90 @@ class ProcessingProcessor:
                 'message': error_msg,
                 'details': error_details
             }
+
+    def exportar_resultados(self, puntos_group, poligonos_group, triangulaciones_group, export_options):
+        """Exportar capas generadas a formatos externos"""
+        self.log_callback("💾 Iniciando exportación de resultados...")
+        geo_dir = os.path.join(self.PROC_ROOT, "Geoespacial")
+        
+        # 1. Exportar Puntos (.csv)
+        if export_options.get('points'):
+            puntos_dir = os.path.join(geo_dir, "Puntos")
+            os.makedirs(puntos_dir, exist_ok=True)
+            self._exportar_grupo(puntos_group, puntos_dir, "csv")
+            
+        # 2. Exportar Polígonos (.shp)
+        if export_options.get('polygons'):
+            polys_dir = os.path.join(geo_dir, "Poligonos")
+            os.makedirs(polys_dir, exist_ok=True)
+            self._exportar_grupo(poligonos_group, polys_dir, "shp")
+            
+        # 3. Exportar Triangulaciones (.tif)
+        if export_options.get('tin'):
+            tin_dir = os.path.join(geo_dir, "Triangulaciones")
+            os.makedirs(tin_dir, exist_ok=True)
+            self._exportar_raster_grupo(triangulaciones_group, tin_dir, "tif")
+
+    def _exportar_grupo(self, grupo, carpeta_destino, formato):
+        """Helper para exportar capas vectoriales de un grupo"""
+        count = 0
+        for child in grupo.children():
+            if hasattr(child, 'layer') and child.layer():
+                layer = child.layer()
+                nombre_safe = layer.name().replace(" ", "_")
+                ruta_salida = os.path.join(carpeta_destino, f"{nombre_safe}.{formato}")
+                
+                try:
+                    error = QgsVectorFileWriter.writeAsVectorFormat(
+                        layer,
+                        ruta_salida,
+                        "UTF-8",
+                        layer.crs(),
+                        "CSV" if formato == "csv" else "ESRI Shapefile"
+                    )
+                    if error[0] == QgsVectorFileWriter.NoError:
+                        count += 1
+                        self.log_callback(f"  ✔️ Exportado: {nombre_safe}.{formato}")
+                    else:
+                        self.log_callback(f"  ❌ Error exportando {nombre_safe}: {error}")
+                except Exception as e:
+                    self.log_callback(f"  ❌ Excepción exportando {nombre_safe}: {e}")
+        
+        if count > 0:
+            self.log_callback(f"  ✅ {count} archivos {formato.upper()} exportados en {os.path.basename(carpeta_destino)}")
+
+    def _exportar_raster_grupo(self, grupo, carpeta_destino, formato):
+        """Helper para exportar capas raster de un grupo (TIN/ASC)"""
+        count = 0
+        for child in grupo.children():
+            if hasattr(child, 'layer') and child.layer():
+                layer = child.layer()
+                if not isinstance(layer, QgsRasterLayer):
+                    continue
+                    
+                nombre_safe = layer.name().replace(" ", "_")
+                ruta_salida = os.path.join(carpeta_destino, f"{nombre_safe}.{formato}")
+                
+                try:
+                    # Usar algortimo gdal:translate para exportar
+                    params = {
+                        'INPUT': layer,
+                        'TARGET_CRS': layer.crs(),
+                        'NODATA': None,
+                        'COPY_SUBDATASETS': False,
+                        'OPTIONS': '',
+                        'EXTRA': '',
+                        'DATA_TYPE': 0,
+                        'OUTPUT': ruta_salida
+                    }
+                    processing.run("gdal:translate", params)
+                    if os.path.exists(ruta_salida):
+                        count += 1
+                        self.log_callback(f"  ✔️ Exportado: {nombre_safe}.{formato}")
+                    else:
+                        self.log_callback(f"  ❌ Falló exportación de {nombre_safe}")
+                except Exception as e:
+                    self.log_callback(f"  ❌ Excepción exportando {nombre_safe}: {e}")
+
+        if count > 0:
+            self.log_callback(f"  ✅ {count} archivos {formato.upper()} exportados en {os.path.basename(carpeta_destino)}")
