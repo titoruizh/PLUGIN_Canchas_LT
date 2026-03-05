@@ -57,21 +57,30 @@ class LabReportLoader:
                 layer.updateFields()
                 idx_field = layer.fields().indexOf(field_name)
             
-            # Mapa de Features para búsqueda espacial rápida? 
-            # Como son pocas canchas, iterar features es viable.
-            # O mejor: index espacial de la capa.
-            
             count_matches = 0
             count_errors = 0
             rows_processed = 0
             
+            # Contadores de rechazo para diagnóstico
+            count_no_coord = 0
+            count_no_informe = 0
+            count_no_spatial = 0
+            count_reject_fecha = 0
+            count_reject_muro = 0
+            count_reject_sector = 0
+            unmatched_rows = []  # Para resumen final
+            
             # Iniciar edición
             layer.startEditing()
             
+            # Pre-cachear features para no reiterar la capa
+            features_cache = list(layer.getFeatures())
+            self.log_callback(f"📋 Canchas en capa: {len(features_cache)}")
+            
             # Iterar filas del Excel (Saltar cabecera, asumiendo fila 5 son headers, fila 6 datos)
-            # min_row=6 para empezar en los datos
             for row_idx, row in enumerate(sheet.iter_rows(min_row=6, values_only=True), start=6):
                 if not row[self.column_mapping['coord']]: # Si no hay coordenada, saltar
+                    count_no_coord += 1
                     continue
                     
                 rows_processed += 1
@@ -89,6 +98,7 @@ class LabReportLoader:
                     n_informe = row[self.column_mapping['n_informe_2']]
                 
                 if not n_informe:
+                    count_no_informe += 1
                     continue
                     
                 n_informe_str = str(n_informe).strip()
@@ -96,7 +106,6 @@ class LabReportLoader:
                 # Parsear Coordenadas
                 pt_geom = self._parse_coordinate(raw_coord)
                 if not pt_geom:
-                    # self.log_callback(f"⚠️ Fila {row_idx}: Formato coord inválido '{raw_coord}'")
                     count_errors += 1
                     continue
                 
@@ -119,22 +128,24 @@ class LabReportLoader:
                 match_found = False
                 closest_dist = float('inf')
                 closest_id = None
+                closest_name = ""
+                reject_reason = ""  # Razón del último rechazo
                 
                 # Iterar canchas
-                for feature in layer.getFeatures():
+                for feature in features_cache:
                     # Calculo de distancia (0 si está dentro)
                     dist = feature.geometry().distance(pt_geom)
                     
                     if dist < closest_dist:
                         closest_dist = dist
                         closest_id = feature.id()
+                        closest_name = feature['Protocolo Topografico'] if feature['Protocolo Topografico'] else str(feature.id())
                     
                     # 1. Check Espacial (tolerancia 2 metros)
                     if dist > 2.0:
                         continue
                         
                     # CANDIDATO ESPACIAL ENCONTRADO
-                    # self.log_callback(f"  🔍 Candidato espacial: Distancia {dist:.3f}m - ID {feature.id()}")
                     
                     # 2. Check Fecha (con logica segura)
                     feat_fecha_val = feature['Fecha']
@@ -156,8 +167,8 @@ class LabReportLoader:
                         dates_match = True
                         
                     if not dates_match:
-                        # Loguear por qué falló el candidato espacial
-                        self.log_callback(f"  ❌ Rechazado por FECHA: Excel({date_obj}) != Cancha({feat_date}) - ID: {feature.id()}")
+                        reject_reason = f"FECHA: Excel({date_obj}) != Cancha({feat_date})"
+                        count_reject_fecha += 1
                         continue
                         
                     # 3. Check Metadata (Muro/Sector)
@@ -174,7 +185,8 @@ class LabReportLoader:
                         if m_feat == "MP": m_feat = "PRINCIPAL"
                         
                         if m_excel != m_feat:
-                            self.log_callback(f"  ❌ Rechazado por MURO: Excel({raw_muro}) != Cancha({feat_muro})")
+                            reject_reason = f"MURO: Excel({raw_muro}) != Cancha({feat_muro})"
+                            count_reject_muro += 1
                             continue
                     
                     # Logica Sector: "4" in "Sector 4"
@@ -183,7 +195,8 @@ class LabReportLoader:
                         s_excel = raw_sector.upper().replace("SECTOR", "").strip()
                         s_feat = feat_sector.upper().replace("SECTOR", "").strip()
                         if s_excel != s_feat:
-                             self.log_callback(f"  ❌ Rechazado por SECTOR: Excel({raw_sector}) != Cancha({feat_sector})")
+                             reject_reason = f"SECTOR: Excel({raw_sector}) != Cancha({feat_sector})"
+                             count_reject_sector += 1
                              continue
                     
                     # ASIGNAR Y SALIR DEL LOOP DE FEATURES
@@ -195,10 +208,62 @@ class LabReportLoader:
                     count_matches += 1
                     break 
                 
-                if not match_found and rows_processed <= 5:
-                     self.log_callback(f"⚠️ Fila {row_idx}: No match. Cancha más cercana a {closest_dist:.2f}m (ID: {closest_id})")
+                if not match_found:
+                    # Determinar razón principal
+                    if closest_dist > 2.0:
+                        reject_reason = f"FUERA DE RANGO ESPACIAL (distancia mínima: {closest_dist:.1f}m a '{closest_name}')"
+                        count_no_spatial += 1
+                    
+                    # Loguear TODAS las filas sin match
+                    self.log_callback(f"  ⚠️ SIN MATCH Fila {row_idx}: Fecha={date_obj}, Muro={raw_muro}, Sector={raw_sector}, Informe={n_informe_str} → {reject_reason}")
+                    unmatched_rows.append({
+                        'fila': row_idx,
+                        'fecha': str(date_obj),
+                        'muro': raw_muro,
+                        'sector': raw_sector,
+                        'razon': reject_reason,
+                        'dist_min': closest_dist,
+                        'cancha_cercana': closest_name
+                    })
             
             layer.commitChanges()
+            
+            # ═══════════════════════════════════════════════════
+            # RESUMEN DETALLADO DE MATCHING
+            # ═══════════════════════════════════════════════════
+            self.log_callback(f"")
+            self.log_callback(f"{'═'*60}")
+            self.log_callback(f"📊 RESUMEN DE MATCHING LABORATORIO")
+            self.log_callback(f"{'═'*60}")
+            self.log_callback(f"  📋 Filas en Excel con coordenada: {rows_processed}")
+            self.log_callback(f"  🚫 Filas sin coordenada (saltadas): {count_no_coord}")
+            self.log_callback(f"  🚫 Filas sin N° Informe (saltadas): {count_no_informe}")
+            self.log_callback(f"  ❌ Filas con error de parseo coord: {count_errors}")
+            self.log_callback(f"  ✅ Matches exitosos: {count_matches}")
+            self.log_callback(f"  ❌ Sin match: {len(unmatched_rows)}")
+            self.log_callback(f"{'─'*60}")
+            self.log_callback(f"  📊 DESGLOSE DE RECHAZOS:")
+            self.log_callback(f"    🗺️ Fuera de rango espacial (>2m): {count_no_spatial}")
+            self.log_callback(f"    📅 Fecha no coincide: {count_reject_fecha}")
+            self.log_callback(f"    🧱 Muro no coincide: {count_reject_muro}")
+            self.log_callback(f"    📍 Sector no coincide: {count_reject_sector}")
+            
+            # Agrupar sin-match por fecha para detectar patrones
+            if unmatched_rows:
+                from collections import Counter
+                fechas_sin_match = Counter(r['fecha'] for r in unmatched_rows)
+                self.log_callback(f"{'─'*60}")
+                self.log_callback(f"  📅 FECHAS CON MÁS FILAS SIN MATCH:")
+                for fecha, cnt in fechas_sin_match.most_common(10):
+                    self.log_callback(f"    {fecha}: {cnt} filas sin match")
+                
+                razones_sin_match = Counter(r['razon'].split(':')[0] for r in unmatched_rows if r['razon'])
+                self.log_callback(f"{'─'*60}")
+                self.log_callback(f"  🔍 RAZONES PRINCIPALES:")
+                for razon, cnt in razones_sin_match.most_common():
+                    self.log_callback(f"    {razon}: {cnt}")
+            
+            self.log_callback(f"{'═'*60}")
             
             return True, f"Proceso completado. {count_matches} ensayos asignados de {rows_processed} filas procesadas.", {'matches': count_matches}
 

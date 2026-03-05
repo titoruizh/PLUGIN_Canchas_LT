@@ -32,7 +32,7 @@ from qgis.core import (
 )
 from qgis.analysis import QgsRasterCalculator, QgsRasterCalculatorEntry
 from PyQt5.QtGui import QColor, QBrush
-from PyQt5.QtCore import QSize
+from PyQt5.QtCore import QSize, QCoreApplication
 from qgis.utils import iface
 import processing
 
@@ -207,7 +207,9 @@ class VolumeScreenshotProcessor:
             noData=nodata_base,
             creationOptions=["TILED=YES", "COMPRESS=LZW", "BIGTIFF=YES"]
         )
+        QCoreApplication.processEvents()
         gdal.Translate(work_path, ds_base, options=translate_opts)
+        QCoreApplication.processEvents()
         ds_base = None
 
         saved_renderer = None
@@ -333,22 +335,42 @@ class VolumeScreenshotProcessor:
                 )
                 
                 # Ejecutar
+                QCoreApplication.processEvents()
                 gdal.Warp(temp_upsample, work_path, options=upsample_opts)
+                QCoreApplication.processEvents()
                 
-                # Reemplazar archivo original (windows requiere remove explícito a veces)
+                # FIX v6.4: En Windows, el archivo work_path está a menudo lockeado por QGIS.
+                # En vez de intentar reemplazarlo (WinError 32), trabajamos directamente
+                # desde el archivo temporal upsampled.
                 import shutil
+                upsampled_ok = False
                 try:
                     os.remove(work_path)
                     shutil.move(temp_upsample, work_path)
                     self.log_callback(f"✅ Muro actualizado exitosamente a resolución de parche ({px_p:.3f}m)")
+                    upsampled_ok = True
                 except Exception as e:
-                    self.log_callback(f"❌ Error reemplazando archivo upsampled: {e}")
-                    # Intentar recuperar
+                    self.log_callback(f"⚠️ No se pudo reemplazar archivo original (archivo lockeado): {e}")
+                    # NUEVO: Trabajar directamente desde el archivo temporal
                     if os.path.exists(temp_upsample):
-                        shutil.copy(temp_upsample, work_path)
+                        self.log_callback(f"🔄 Usando archivo upsampled temporal directamente: {temp_upsample}")
+                        upsampled_ok = True
+                        work_path = temp_upsample  # Redirigir al temporal
+                        # BUG FIX: Actualizar la variable de proyecto para que futuras
+                        # llamadas a _get_or_make_dem_work_path() devuelvan el path correcto
+                        # (y no el archivo original lockeado).
+                        key = self.PROJ_VAR_PREFIX + dem_layer_name
+                        QgsExpressionContextUtils.setProjectVariable(
+                            QgsProject.instance(), key, temp_upsample
+                        )
+                        self.log_callback(f"🔧 Variable de proyecto actualizada: {key} → {temp_upsample}")
+                    else:
+                        self.log_callback(f"❌ Archivo upsampled temporal no encontrado. Continuando con resolución original.")
                 
-                # Reabrir ds_work con la nueva resolución
+                # Reabrir ds_work (desde work_path original o temporal según resultado)
                 ds_work = gdal.Open(work_path, gdal.GA_Update)
+                if ds_work and upsampled_ok:
+                    self.log_callback(f"✅ DEM abierto con resolución upsampled: {ds_work.RasterXSize}x{ds_work.RasterYSize}")
                 
         except Exception as e:
             self.log_callback(f"⚠️ Error en auto-upsampling (se continuará con resolución original): {e}")
@@ -394,7 +416,9 @@ class VolumeScreenshotProcessor:
             resampleAlg=self.resample_algorithm,
             multithread=True
         )
+        QCoreApplication.processEvents()
         ds_patch_aligned = gdal.Warp('', ds_patch, options=warp_opts)
+        QCoreApplication.processEvents()
         if ds_patch_aligned is None:
             self.log_callback(f"❌ Error al remuestrear el parche {patch_layer.name()} en memoria")
             ds_work = None
@@ -406,41 +430,60 @@ class VolumeScreenshotProcessor:
 
         # Usar nuevo método de pegado con proyección de talud (Slope Projection v6)
         # Se pasa px_size_x para calcular pendientes reales en metros
-        self._apply_transition_skirt(base_arr, patch_arr, nodata_patch, nodata_base, px_size=px_size_x, transition_width=100)
+        base_arr = self._apply_transition_skirt(base_arr, patch_arr, nodata_patch, nodata_base, px_size=px_size_x, transition_width=100)
         
+        # Guardar en GDAL
         band_work.WriteArray(base_arr)
         band_work.SetNoDataValue(nodata_base)
         band_work.FlushCache()
         ds_work.FlushCache()
         self.log_callback(f"✅ Parche '{patch_layer.name()}' pegado correctamente sobre '{dem_layer_name}' con suavizado")
-
+            
+        ds_work = None
         ds_patch_aligned = None
         ds_patch = None
         
+        # FORZAR LIBERACION DE MEMORIA DE ARRAYS GIGANTES
+        del base_arr
+        del patch_arr
+
+        try:
+            # ADVERTENCIA: Hacer reloadData() o triggerRepaint() iterativamente sobre la misma 
+            # capa raster mientras está transaccionando en GDAL genera DEADLOCKS ciegos en QGIS/SIP.
+            # No descomentar. La actualización de GUI se hace al terminar todo el batch.
+            # dem.dataProvider().reloadData()
+            # dem.triggerRepaint()
+            pass
+        except Exception:
+            pass
+            
+        return True
+
     def _apply_transition_skirt(self, base_arr, patch_arr, nodata_patch, nodata_base, px_size=1.0, transition_width=100):
         """
         Aplica el parche usando Slope Projection v6 (Proyección de Talud Natural).
-
-        Mejoras v6 (Physical Embankment):
-        En lugar de interpolar, PROYECTAMOS un talud físico.
-        Esto genera la estética de "maquinaria" y "movimiento de tierras" realista.
         """
         try:
+            self.log_callback(f"⚙️ Aplicando talud. Tamaño matriz: {base_arr.shape}")
+            QCoreApplication.processEvents()
+            
             # Pendiente 1:1 (45 grados)
             SLOPE_RATIO = 1.0  
             
             # 1. Máscaras de validez
             valid_p = (patch_arr != nodata_patch) & (np.abs(patch_arr) < 100000)
-            if not np.any(valid_p): return
+            if not np.any(valid_p): return base_arr
 
             # 2. EDT (Distancia al borde del parche)
+            from scipy.ndimage import distance_transform_edt
             dist, idx = distance_transform_edt(~valid_p, return_indices=True)
+            QCoreApplication.processEvents()
             
             # Scouting zone
             wz = (dist > 0) & (dist <= transition_width)
             if not np.any(wz):
                 base_arr[valid_p] = patch_arr[valid_p]
-                return
+                return base_arr
 
             # 3. Z de Referencia (Borde del parche)
             z_ref_patch = patch_arr[tuple(idx)]
@@ -456,6 +499,7 @@ class VolumeScreenshotProcessor:
                 # Encontrar el pixel válido de BASE más cercano para cada punto del vacío
                 # Invertimos máscara: queremos distancia HASTA los True (valid base)
                 dist_to_base, idx_base = distance_transform_edt(~valid_base_mask, return_indices=True)
+                QCoreApplication.processEvents()
                 
                 # Z del terreno existente más cercano
                 z_ref_base = base_arr[tuple(idx_base)]
@@ -500,19 +544,8 @@ class VolumeScreenshotProcessor:
             self.log_callback(f"⚠️ Error v6.3: {e}")
             mask = (patch_arr != nodata_patch)
             base_arr[mask] = patch_arr[mask]
-        ds_work = None
-
-        try:
-            # Forzar recarga completa de la capa desde disco
-            dem.dataProvider().reloadData()
-            dem.triggerRepaint()
-            if iface:
-                iface.mapCanvas().refresh()
-                iface.mapCanvas().refreshAllLayers()
-        except Exception:
-            pass
-
-        return True
+        
+        return base_arr
 
     # ===========================================
     # FUNCIONES DE CÁLCULO VOLUMÉTRICO
@@ -557,13 +590,20 @@ class VolumeScreenshotProcessor:
                 self.log_callback(f"❌ Error: Extensión vacía para {base_name} (TIN: {tin_extent.isEmpty()}, Base: {base_extent.isEmpty()})")
                 return
             
+            QCoreApplication.processEvents()
+            # FIX: Definir NODATA explícitamente para que áreas sin solapamiento válido
+            # (por mismatch de resolución/extensión tras WinError 32) queden como nodata
+            # y NO se llenen con el valor float32 máximo (~3.4e38).
+            _CALC_NODATA = -9999.0
             output_diff = processing.run("qgis:rastercalculator", {
                 'EXPRESSION': f'"{tin.name()}@1" - "{base.name()}@1"',
                 'LAYERS': [tin, base],
                 'CRS': project_crs.authid(),
                 'EXTENT': tin_extent,
+                'NODATA': _CALC_NODATA,
                 'OUTPUT': 'TEMPORARY_OUTPUT'
             })['OUTPUT']
+            QCoreApplication.processEvents()
 
             if poligono_layer.featureCount() > 0:
                 output_clip = processing.run("gdal:cliprasterbymasklayer", {
@@ -573,6 +613,7 @@ class VolumeScreenshotProcessor:
                     'KEEP_RESOLUTION': True,
                     'OUTPUT': 'TEMPORARY_OUTPUT'
                 })['OUTPUT']
+                QCoreApplication.processEvents()
             else:
                 output_clip = output_diff
 
@@ -596,6 +637,13 @@ class VolumeScreenshotProcessor:
                 arr = np.ma.masked_equal(arr, nodata)
             else:
                 arr = np.ma.masked_invalid(arr)
+
+            # SANITY FIX (defensa secundaria): Enmascarar valores con magnitud absurda.
+            # La causa raíz está resuelta arriba (NODATA en rastercalculator), pero esto
+            # actúa como red de seguridad ante cualquier futura ruta de código que
+            # omita el nodata. 50m es imposible como espesor real en este contexto.
+            SANITY_CAP = 50.0  # metros
+            arr = np.ma.masked_where(np.abs(arr.data) > SANITY_CAP, arr)
 
             valid_espesores = np.abs(arr[~arr.mask])
             
@@ -768,7 +816,9 @@ class VolumeScreenshotProcessor:
             tin_layer.height(),
             entries
         )
+        QCoreApplication.processEvents()
         result = calc.processCalculation()
+        QCoreApplication.processEvents()
         
         if result == 0:
             diff_layer = QgsRasterLayer(output_path, f"Diff_{output_name}")
@@ -1837,9 +1887,11 @@ class VolumeScreenshotProcessor:
             temp_diff_layers = []
 
             for base in sorted_bases:
+                QCoreApplication.processEvents()
                 bases_procesadas += 1
                 progreso = 30 + int((bases_procesadas / total_bases) * 60)
                 self.progress_callback(progreso, f"Procesando {base}...")
+                QCoreApplication.processEvents()
 
                 nombre_layer = self.nombre_sin_prefijo(base)
                 if nombre_layer not in poligonos_layers or nombre_layer not in triangulaciones_layers:
@@ -1899,12 +1951,13 @@ class VolumeScreenshotProcessor:
                     })
 
                 # Reload base
-                try:
-                    tin_base.dataProvider().reloadData()
-                except:
-                    pass
+                # try:
+                #     tin_base.dataProvider().reloadData()
+                # except:
+                #     pass
 
                 # 1) CALCULAR VOLÚMENES
+                self.log_callback(f"⚙️ [Paso 1/4] Calculando volúmenes para {nombre_layer}...")
                 self.calcular_volumenes(poligono_layer, tin_nuevo, tin_base, tabla, nombre_layer)
 
                 # Actualizar DB
@@ -1917,10 +1970,12 @@ class VolumeScreenshotProcessor:
                                  tabla.changeAttributeValue(f.id(), idx, canchas_anteriores_str)
                              break
                     tabla.commitChanges()
-                except Exception:
+                except Exception as e:
+                    self.log_callback(f"⚠️ Error al actualizar BD en volúmenes: {e}")
                     tabla.rollBack()
 
                 # 2) PANTALLAZO DIFERENCIA
+                self.log_callback(f"⚙️ [Paso 2/4] Preparando pantallazos de diferencias...")
                 if capa_fondo:
                     punto_inicio_perfil, punto_fin_perfil = None, None
                     linea_perfil_geom = None
@@ -1936,13 +1991,23 @@ class VolumeScreenshotProcessor:
                     if diff_layer:
                         archivo_pantallazo = os.path.join(self.CARPETA_PLANOS, f"P{nombre_layer}.jpg")
                         try:
+                            self.log_callback(f"📸 Exportando layout a {archivo_pantallazo}...")
                             if self.generar_pantallazo_diferencia_dem(diff_layer, capa_fondo, archivo_pantallazo, linea_perfil_geom, None):
                                 pantallazos_exitosos += 1
-                                temp_diff_layers.append(diff_layer)
                         except Exception as e:
                             self.log_callback(f"❌ Error pantallazo {nombre_layer}: {e}")
+                            
+                        # LIBERACIÓN CRÍTICA DE MEMORIA DEL RASTER DE DIFERENCIA (no acumularlos)
+                        diff_source = diff_layer.source()
+                        del diff_layer
+                        try:
+                            if os.path.exists(diff_source):
+                                os.remove(diff_source)
+                        except Exception:
+                            pass
 
                 # 3) PERFIL STACK-BASED
+                self.log_callback(f"⚙️ [Paso 3/4] Construyendo perfil de capas (Stack)...")
                 try:
                     tabla_feature = None
                     for feat in tabla.getFeatures():
@@ -1981,14 +2046,6 @@ class VolumeScreenshotProcessor:
                             grandparent_label = ""
                             
                             # CASO ESPECIAL: Si Base = DEM_MURO (primera cancha), NO hay "Anterior".
-                            # v6.6 DOCUMENTACIÓN FUTURA:
-                            # Actualmente 'tin_base' siempre es el objeto layer del DEM de trabajo (cuyo nombre original contiene "DEM_"),
-                            # por lo que 'is_first_cancha' evalúa SIEMPRE a True en este loop.
-                            # Esto causa que la capa "Anterior" nunca se muestre, lo cual es el comportamiento deseado por el usuario (solo 2 líneas).
-                            # SI SE DESEA ACTIVAR EN EL FUTURO:
-                            # Cambiar la condición a algo que detecte iteraciones, ej:
-                            # is_first_cancha = self.processed_count == 0 (necesitaría contador en loop)
-                            # O verificar si el snapshot existe y es distinto al DEM Base actual.
                             is_first_cancha = "DEM_" in str(tin_base.name()) if tin_base else False
                             
                             if not is_first_cancha:
@@ -2019,6 +2076,7 @@ class VolumeScreenshotProcessor:
                                 layers_map['Anterior'] = grandparent_layer
 
                             # MUESTREO (Usando el metodo multicapa existente que devuelve dict)
+                            self.log_callback(f"📐 Muestreando modelo de multicapas en el terreno...")
                             distancias, data_dict = self.muestrear_perfil_multicapa(
                                 layers_map, punto_inicio, punto_fin, num_puntos=100, linea_geom=linea_perfil_geom
                             )
@@ -2063,6 +2121,7 @@ class VolumeScreenshotProcessor:
                     self.log_callback(f"⚠️ Error perfil {base}: {e}")
 
                 # 3) PEGADO INCREMENTAL
+                self.log_callback(f"⚙️ [Paso 4/4] Iniciando Pegado Incremental...")
                 
                 # --- SNAPSHOT (v6.4): Guardar el estado ACTUAL del DEM antes de modificarlo ---
                 # El estado actual (sin la capa nueva) será el "Anterior" (T-2) para la SIGUIENTE iteración.
@@ -2077,22 +2136,25 @@ class VolumeScreenshotProcessor:
                     if work_dem_layer:
                         source_path = work_dem_layer.source()
                         if os.path.exists(source_path):
+                            self.log_callback(f"💾 Guardando backup en {snap_name}...")
                             shutil.copy2(source_path, snap_path)
                             self.last_dem_snapshot_path = snap_path
                             self.temp_files.append(snap_path) # Marcar para borrado final
-                            # self.log_callback(f"📸 Snapshot guardado para historial: {snap_name}")
                 except Exception as e:
                     self.log_callback(f"⚠️ Error creando snapshot historial: {e}")
 
                 self.overlay_patch_onto_dem(tin_nuevo, dem_real_name)
-                self.log_callback(f"✔️ Fila completada: {base}")
+                self.log_callback(f"✔️ Fila completada exitosamente: {base}")
 
             # Limpieza
             self.progress_callback(95, "Limpiando archivos temporales...")
-            for layer in temp_diff_layers:
-                if layer and layer.isValid():
-                    QgsProject.instance().removeMapLayer(layer.id())
             self.cleanup_temp_files()
+            
+            # Limpieza extra de diccionarios caché
+            self._original_raster_cache.clear()
+            self.original_dem_paths.clear()
+            import gc
+            gc.collect()
             
             return {
                 'success': True,

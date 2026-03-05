@@ -22,7 +22,8 @@ import os
 from datetime import datetime
 from qgis.core import (
     QgsVectorLayer, QgsRasterLayer, QgsProject, QgsProcessingFeedback,
-    QgsCoordinateReferenceSystem, QgsPointXY, QgsGeometry, QgsField, QgsFeature, QgsRaster
+    QgsCoordinateReferenceSystem, QgsPointXY, QgsGeometry, QgsField, QgsFeature, QgsRaster,
+    QgsVectorFileWriter
 )
 from PyQt5.QtCore import QVariant
 import processing
@@ -863,18 +864,22 @@ class ProcessingProcessor:
                 ruta_salida = os.path.join(carpeta_destino, f"{nombre_safe}.{formato}")
                 
                 try:
-                    error = QgsVectorFileWriter.writeAsVectorFormat(
+                    options = QgsVectorFileWriter.SaveVectorOptions()
+                    options.driverName = "CSV" if formato == "csv" else "ESRI Shapefile"
+                    options.fileEncoding = "UTF-8"
+                    
+                    error, error_msg = QgsVectorFileWriter.writeAsVectorFormatV3(
                         layer,
                         ruta_salida,
-                        "UTF-8",
-                        layer.crs(),
-                        "CSV" if formato == "csv" else "ESRI Shapefile"
+                        QgsProject.instance().transformContext(),
+                        options
                     )
-                    if error[0] == QgsVectorFileWriter.NoError:
+                    
+                    if error == QgsVectorFileWriter.NoError:
                         count += 1
                         self.log_callback(f"  ✔️ Exportado: {nombre_safe}.{formato}")
                     else:
-                        self.log_callback(f"  ❌ Error exportando {nombre_safe}: {error}")
+                        self.log_callback(f"  ❌ Error exportando {nombre_safe}: {error_msg}")
                 except Exception as e:
                     self.log_callback(f"  ❌ Excepción exportando {nombre_safe}: {e}")
         

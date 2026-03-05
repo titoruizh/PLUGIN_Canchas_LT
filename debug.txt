@@ -1,0 +1,825 @@
+[11:53:10] 📊📸 Iniciando proceso unificado de volúmenes y pantallazos...
+[11:53:10] 📁 PROC_ROOT: E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero
+[11:53:10] 📏 Espesor mínimo: 0.01
+[11:53:10] 🖼️ Dimensiones: 800x500
+[11:53:10] 🔧 Cálculo volumétrico con generación de pantallazos...
+[11:53:15] ✅ DEM_MP_260130 ahora trabaja sobre temporal: C:\Users\LT_GAB~1\AppData\Local\Temp\DEM_MP_260130_work.tif
+[11:53:15] 💾 DEM Original (Virgen) respaldado para perfil topográfico: C:\Users\LT_GAB~1\AppData\Local\Temp\DEM_MP_260130_original_ref.tif
+[11:53:15] ⚙️ [Paso 1/4] Calculando volúmenes para 260202_MP_S6_TALUD_PATA_AM...
+[11:53:15] ⚠️ CRS inválido para TIN 260202_MP_S6_TALUD_PATA_AM, asignando CRS del proyecto: EPSG:32719
+[11:53:15] ⚠️ CRS inválido para base DEM DEM_MP_260130, asignando CRS del proyecto: EPSG:32719
+[11:53:15] 📊 Filtrado de outliers para 260202_MP_S6_TALUD_PATA_AM:
+[11:53:15]    🔢 Píxeles válidos: 30914
+[11:53:15]    📈 Rango original: 0.0000m - 3.0030m
+[11:53:15]    🎯 Percentiles P1/P95: 0.0170m - 1.1440m
+[11:53:15]    🚫 Outliers eliminados: 1856 píxeles (310 bajos, 1546 altos)
+[11:53:15]    ✅ Rango filtrado: 0.0170m - 1.1440m
+[11:53:15]    📉 Espesor máximo reducido en 61.9% (3.0030m → 1.1440m)
+[11:53:15] ✔️ Campos de volúmenes y espesores actualizados en la tabla para 260202_MP_S6_TALUD_PATA_AM
+[11:53:15] ✔️ Volúmenes y espesores calculados para 260202_MP_S6_TALUD_PATA_AM: Corte=184.25 m³, Relleno=1072.84 m³, Espesor medio=0.4599m, Espesor mínimo=0.017m, Espesor máximo=1.144m
+[11:53:15] ⚙️ [Paso 2/4] Preparando pantallazos de diferencias...
+[11:53:15] 📐 Promedios pares: Par1(P1-P2/P3-P4)=98.39m, Par2(P1-P3/P2-P4)=97.18m, Par3(P1-P4/P2-P3)=22.33m
+[11:53:15] 📏 Perfil longitudinal: entre medios de P1-P4 y P2-P3
+[11:53:15] ✅ Línea central cargada desde 'Eje Central' (260202_MP_S6_TALUD_PATA_AM)
+[11:53:15] ✅ Diferencia calculada: 260202_MP_S6_TALUD_PATA_AM
+[11:53:15] 📸 Exportando layout a E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Planos\P260202_MP_S6_TALUD_PATA_AM.jpg...
+[11:53:15] ⚙️ Aplicando simbología adaptativa para corte/relleno en Diff_260202_MP_S6_TALUD_PATA_AM...
+[11:53:15] 🎨 Creando escala adaptativa: Corte máximo -3.00m, Relleno máximo 1.47m
+[11:53:15] 📏 Línea de perfil con etiqueta agregada al pantallazo
+[11:53:15] ✅ Pantallazo de diferencia DEM exportado: E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Planos\P260202_MP_S6_TALUD_PATA_AM.jpg
+[11:53:16] ⚙️ [Paso 3/4] Construyendo perfil de capas (Stack)...
+[11:53:16] 📐 Promedios pares: Par1(P1-P2/P3-P4)=98.39m, Par2(P1-P3/P2-P4)=97.18m, Par3(P1-P4/P2-P3)=22.33m
+[11:53:16] 📏 Perfil longitudinal: entre medios de P1-P4 y P2-P3
+[11:53:16] ✅ Línea central cargada desde 'Eje Central' (260202_MP_S6_TALUD_PATA_AM)
+[11:53:16] 📐 Muestreando modelo de multicapas en el terreno...
+[11:53:16] ✅ Perfil Stack Generado: E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Perfiles\PERFIL_260202_MP_S6_TALUD_PATA_AM.jpg (2 capas)
+[11:53:16] ⚙️ [Paso 4/4] Iniciando Pegado Incremental...
+[11:53:16] 💾 Guardando backup en snapshot_260202_MP_S6_TALUD_PATA_AM.tif...
+[11:53:16] ⚠️ CRS no definido en DEM_MP_260130, asignando EPSG:32719
+[11:53:16] ⚙️ Aplicando talud. Tamaño matriz: (4097, 7614)
+[11:53:21] ✅ Parche '260202_MP_S6_TALUD_PATA_AM' pegado correctamente sobre 'DEM_MP_260130' con suavizado
+[11:53:21] ✔️ Fila completada exitosamente: 260202_MP_S6_TALUD_PATA_AM
+[11:53:21] ⚙️ [Paso 1/4] Calculando volúmenes para 260202_MP_S6_TALUD_PATA_NIVELACION_AM...
+[11:53:21] ⚠️ CRS inválido para TIN 260202_MP_S6_TALUD_PATA_NIVELACION_AM, asignando CRS del proyecto: EPSG:32719
+[11:53:21] 📊 Filtrado de outliers para 260202_MP_S6_TALUD_PATA_NIVELACION_AM:
+[11:53:21]    🔢 Píxeles válidos: 26981
+[11:53:21]    📈 Rango original: 0.0002m - 1.8160m
+[11:53:21]    🎯 Percentiles P1/P95: 0.1088m - 0.5510m
+[11:53:21]    🚫 Outliers eliminados: 1619 píxeles (270 bajos, 1349 altos)
+[11:53:21]    ✅ Rango filtrado: 0.1088m - 0.5510m
+[11:53:21]    📉 Espesor máximo reducido en 69.7% (1.8160m → 0.5510m)
+[11:53:21] ✔️ Campos de volúmenes y espesores actualizados en la tabla para 260202_MP_S6_TALUD_PATA_NIVELACION_AM
+[11:53:21] ✔️ Volúmenes y espesores calculados para 260202_MP_S6_TALUD_PATA_NIVELACION_AM: Corte=792.64 m³, Relleno=8.28 m³, Espesor medio=-0.4654m, Espesor mínimo=0.1088m, Espesor máximo=0.551m
+[11:53:21] ⚙️ [Paso 2/4] Preparando pantallazos de diferencias...
+[11:53:21] 📐 Promedios pares: Par1(P1-P2/P3-P4)=103.21m, Par2(P1-P3/P2-P4)=102.02m, Par3(P1-P4/P2-P3)=15.72m
+[11:53:21] 📏 Perfil longitudinal: entre medios de P1-P4 y P2-P3
+[11:53:21] ✅ Línea central cargada desde 'Eje Central' (260202_MP_S6_TALUD_PATA_NIVELACION_AM)
+[11:53:21] ✅ Diferencia calculada: 260202_MP_S6_TALUD_PATA_NIVELACION_AM
+[11:53:21] 📸 Exportando layout a E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Planos\P260202_MP_S6_TALUD_PATA_NIVELACION_AM.jpg...
+[11:53:21] ⚙️ Aplicando simbología adaptativa para corte/relleno en Diff_260202_MP_S6_TALUD_PATA_NIVELACION_AM...
+[11:53:21] 🎨 Creando escala adaptativa: Corte máximo -1.78m, Relleno máximo 0.71m
+[11:53:21] 📏 Línea de perfil con etiqueta agregada al pantallazo
+[11:53:21] ✅ Pantallazo de diferencia DEM exportado: E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Planos\P260202_MP_S6_TALUD_PATA_NIVELACION_AM.jpg
+[11:53:21] ⚙️ [Paso 3/4] Construyendo perfil de capas (Stack)...
+[11:53:21] 📐 Promedios pares: Par1(P1-P2/P3-P4)=103.21m, Par2(P1-P3/P2-P4)=102.02m, Par3(P1-P4/P2-P3)=15.72m
+[11:53:21] 📏 Perfil longitudinal: entre medios de P1-P4 y P2-P3
+[11:53:21] ✅ Línea central cargada desde 'Eje Central' (260202_MP_S6_TALUD_PATA_NIVELACION_AM)
+[11:53:21] 📐 Muestreando modelo de multicapas en el terreno...
+[11:53:21] ✅ Perfil Stack Generado: E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Perfiles\PERFIL_260202_MP_S6_TALUD_PATA_NIVELACION_AM.jpg (2 capas)
+[11:53:21] ⚙️ [Paso 4/4] Iniciando Pegado Incremental...
+[11:53:21] 💾 Guardando backup en snapshot_260202_MP_S6_TALUD_PATA_NIVELACION_AM.tif...
+[11:53:22] ⚙️ Aplicando talud. Tamaño matriz: (4097, 7614)
+[11:53:26] ✅ Parche '260202_MP_S6_TALUD_PATA_NIVELACION_AM' pegado correctamente sobre 'DEM_MP_260130' con suavizado
+[11:53:26] ✔️ Fila completada exitosamente: 260202_MP_S6_TALUD_PATA_NIVELACION_AM
+[11:53:26] ⚙️ [Paso 1/4] Calculando volúmenes para 260202_MP_S6_TALUD_PATA_NIVELACION_PM...
+[11:53:26] ⚠️ CRS inválido para TIN 260202_MP_S6_TALUD_PATA_NIVELACION_PM, asignando CRS del proyecto: EPSG:32719
+[11:53:26] 📊 Filtrado de outliers para 260202_MP_S6_TALUD_PATA_NIVELACION_PM:
+[11:53:26]    🔢 Píxeles válidos: 29956
+[11:53:26]    📈 Rango original: 0.0000m - 2.5749m
+[11:53:26]    🎯 Percentiles P1/P95: 0.0090m - 0.7288m
+[11:53:26]    🚫 Outliers eliminados: 1798 píxeles (300 bajos, 1498 altos)
+[11:53:26]    ✅ Rango filtrado: 0.0100m - 0.7288m
+[11:53:26]    📉 Espesor máximo reducido en 71.7% (2.5749m → 0.7288m)
+[11:53:26] ✔️ Campos de volúmenes y espesores actualizados en la tabla para 260202_MP_S6_TALUD_PATA_NIVELACION_PM
+[11:53:26] ✔️ Volúmenes y espesores calculados para 260202_MP_S6_TALUD_PATA_NIVELACION_PM: Corte=3.51 m³, Relleno=898.99 m³, Espesor medio=0.4783m, Espesor mínimo=0.01m, Espesor máximo=0.7288m
+[11:53:26] ⚙️ [Paso 2/4] Preparando pantallazos de diferencias...
+[11:53:26] 📐 Promedios pares: Par1(P1-P2/P3-P4)=103.26m, Par2(P1-P3/P2-P4)=102.00m, Par3(P1-P4/P2-P3)=16.29m
+[11:53:26] 📏 Perfil longitudinal: entre medios de P1-P4 y P2-P3
+[11:53:26] ✅ Línea central cargada desde 'Eje Central' (260202_MP_S6_TALUD_PATA_NIVELACION_PM)
+[11:53:26] ✅ Diferencia calculada: 260202_MP_S6_TALUD_PATA_NIVELACION_PM
+[11:53:26] 📸 Exportando layout a E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Planos\P260202_MP_S6_TALUD_PATA_NIVELACION_PM.jpg...
+[11:53:26] ⚙️ Aplicando simbología adaptativa para corte/relleno en Diff_260202_MP_S6_TALUD_PATA_NIVELACION_PM...
+[11:53:26] 🎨 Creando escala adaptativa: Corte máximo -0.18m, Relleno máximo 2.32m
+[11:53:27] 📏 Línea de perfil con etiqueta agregada al pantallazo
+[11:53:27] ✅ Pantallazo de diferencia DEM exportado: E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Planos\P260202_MP_S6_TALUD_PATA_NIVELACION_PM.jpg
+[11:53:27] ⚙️ [Paso 3/4] Construyendo perfil de capas (Stack)...
+[11:53:27] 📐 Promedios pares: Par1(P1-P2/P3-P4)=103.26m, Par2(P1-P3/P2-P4)=102.00m, Par3(P1-P4/P2-P3)=16.29m
+[11:53:27] 📏 Perfil longitudinal: entre medios de P1-P4 y P2-P3
+[11:53:27] ✅ Línea central cargada desde 'Eje Central' (260202_MP_S6_TALUD_PATA_NIVELACION_PM)
+[11:53:27] 📐 Muestreando modelo de multicapas en el terreno...
+[11:53:27] ✅ Perfil Stack Generado: E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Perfiles\PERFIL_260202_MP_S6_TALUD_PATA_NIVELACION_PM.jpg (2 capas)
+[11:53:27] ⚙️ [Paso 4/4] Iniciando Pegado Incremental...
+[11:53:27] 💾 Guardando backup en snapshot_260202_MP_S6_TALUD_PATA_NIVELACION_PM.tif...
+[11:53:27] ⚙️ Aplicando talud. Tamaño matriz: (4097, 7614)
+[11:53:32] ✅ Parche '260202_MP_S6_TALUD_PATA_NIVELACION_PM' pegado correctamente sobre 'DEM_MP_260130' con suavizado
+[11:53:32] ✔️ Fila completada exitosamente: 260202_MP_S6_TALUD_PATA_NIVELACION_PM
+[11:53:32] ⚙️ [Paso 1/4] Calculando volúmenes para 260202_MP_S6_TALUD_PATA_PM...
+[11:53:32] ⚠️ CRS inválido para TIN 260202_MP_S6_TALUD_PATA_PM, asignando CRS del proyecto: EPSG:32719
+[11:53:32] 📊 Filtrado de outliers para 260202_MP_S6_TALUD_PATA_PM:
+[11:53:32]    🔢 Píxeles válidos: 49750
+[11:53:32]    📈 Rango original: 0.0000m - 1.8150m
+[11:53:32]    🎯 Percentiles P1/P95: 0.0040m - 0.8900m
+[11:53:32]    🚫 Outliers eliminados: 2986 píxeles (498 bajos, 2488 altos)
+[11:53:32]    ✅ Rango filtrado: 0.0100m - 0.8900m
+[11:53:32]    📉 Espesor máximo reducido en 51.0% (1.8150m → 0.8900m)
+[11:53:32] ✔️ Campos de volúmenes y espesores actualizados en la tabla para 260202_MP_S6_TALUD_PATA_PM
+[11:53:32] ✔️ Volúmenes y espesores calculados para 260202_MP_S6_TALUD_PATA_PM: Corte=54.91 m³, Relleno=1372.46 m³, Espesor medio=0.4242m, Espesor mínimo=0.01m, Espesor máximo=0.89m
+[11:53:32] ⚙️ [Paso 2/4] Preparando pantallazos de diferencias...
+[11:53:32] 📐 Promedios pares: Par1(P1-P2/P3-P4)=103.32m, Par2(P1-P3/P2-P4)=99.43m, Par3(P1-P4/P2-P3)=35.86m
+[11:53:32] 📏 Perfil longitudinal: entre medios de P1-P4 y P2-P3
+[11:53:32] ✅ Línea central cargada desde 'Eje Central' (260202_MP_S6_TALUD_PATA_PM)
+[11:53:32] ✅ Diferencia calculada: 260202_MP_S6_TALUD_PATA_PM
+[11:53:32] 📸 Exportando layout a E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Planos\P260202_MP_S6_TALUD_PATA_PM.jpg...
+[11:53:32] ⚙️ Aplicando simbología adaptativa para corte/relleno en Diff_260202_MP_S6_TALUD_PATA_PM...
+[11:53:32] 🎨 Creando escala adaptativa: Corte máximo -0.88m, Relleno máximo 1.73m
+[11:53:32] 📏 Línea de perfil con etiqueta agregada al pantallazo
+[11:53:32] ✅ Pantallazo de diferencia DEM exportado: E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Planos\P260202_MP_S6_TALUD_PATA_PM.jpg
+[11:53:32] ⚙️ [Paso 3/4] Construyendo perfil de capas (Stack)...
+[11:53:32] 📐 Promedios pares: Par1(P1-P2/P3-P4)=103.32m, Par2(P1-P3/P2-P4)=99.43m, Par3(P1-P4/P2-P3)=35.86m
+[11:53:32] 📏 Perfil longitudinal: entre medios de P1-P4 y P2-P3
+[11:53:32] ✅ Línea central cargada desde 'Eje Central' (260202_MP_S6_TALUD_PATA_PM)
+[11:53:32] 📐 Muestreando modelo de multicapas en el terreno...
+[11:53:32] ✅ Perfil Stack Generado: E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Perfiles\PERFIL_260202_MP_S6_TALUD_PATA_PM.jpg (2 capas)
+[11:53:32] ⚙️ [Paso 4/4] Iniciando Pegado Incremental...
+[11:53:32] 💾 Guardando backup en snapshot_260202_MP_S6_TALUD_PATA_PM.tif...
+[11:53:33] ⚙️ Aplicando talud. Tamaño matriz: (4097, 7614)
+[11:53:37] ✅ Parche '260202_MP_S6_TALUD_PATA_PM' pegado correctamente sobre 'DEM_MP_260130' con suavizado
+[11:53:37] ✔️ Fila completada exitosamente: 260202_MP_S6_TALUD_PATA_PM
+[11:53:37] ⚙️ [Paso 1/4] Calculando volúmenes para 260206_MP_S5_CORONAMIENTO...
+[11:53:37] ⚠️ CRS inválido para TIN 260206_MP_S5_CORONAMIENTO, asignando CRS del proyecto: EPSG:32719
+[11:53:37] 📊 Filtrado de outliers para 260206_MP_S5_CORONAMIENTO:
+[11:53:37]    🔢 Píxeles válidos: 11975
+[11:53:37]    📈 Rango original: 0.0000m - 1.0730m
+[11:53:37]    🎯 Percentiles P1/P95: 0.1020m - 0.4150m
+[11:53:37]    🚫 Outliers eliminados: 719 píxeles (120 bajos, 599 altos)
+[11:53:37]    ✅ Rango filtrado: 0.1020m - 0.4150m
+[11:53:37]    📉 Espesor máximo reducido en 61.3% (1.0730m → 0.4150m)
+[11:53:37] ✔️ Campos de volúmenes y espesores actualizados en la tabla para 260206_MP_S5_CORONAMIENTO
+[11:53:37] ✔️ Volúmenes y espesores calculados para 260206_MP_S5_CORONAMIENTO: Corte=0.63 m³, Relleno=247.39 m³, Espesor medio=0.3297m, Espesor mínimo=0.102m, Espesor máximo=0.415m
+[11:53:37] ⚙️ [Paso 2/4] Preparando pantallazos de diferencias...
+[11:53:37] 📐 Promedios pares: Par1(P1-P2/P3-P4)=245.97m, Par2(P1-P3/P2-P4)=245.95m, Par3(P1-P4/P2-P3)=3.64m
+[11:53:37] 📏 Perfil longitudinal: entre medios de P1-P4 y P2-P3
+[11:53:37] ✅ Línea central cargada desde 'Eje Central' (260206_MP_S5_CORONAMIENTO)
+[11:53:37] ✅ Diferencia calculada: 260206_MP_S5_CORONAMIENTO
+[11:53:37] 📸 Exportando layout a E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Planos\P260206_MP_S5_CORONAMIENTO.jpg...
+[11:53:37] ⚙️ Aplicando simbología adaptativa para corte/relleno en Diff_260206_MP_S5_CORONAMIENTO...
+[11:53:37] 🎨 Creando escala adaptativa: Corte máximo -1.07m, Relleno máximo 0.56m
+[11:53:38] 📏 Línea de perfil con etiqueta agregada al pantallazo
+[11:53:38] ✅ Pantallazo de diferencia DEM exportado: E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Planos\P260206_MP_S5_CORONAMIENTO.jpg
+[11:53:38] ⚙️ [Paso 3/4] Construyendo perfil de capas (Stack)...
+[11:53:38] 📐 Promedios pares: Par1(P1-P2/P3-P4)=245.97m, Par2(P1-P3/P2-P4)=245.95m, Par3(P1-P4/P2-P3)=3.64m
+[11:53:38] 📏 Perfil longitudinal: entre medios de P1-P4 y P2-P3
+[11:53:38] ✅ Línea central cargada desde 'Eje Central' (260206_MP_S5_CORONAMIENTO)
+[11:53:38] 📐 Muestreando modelo de multicapas en el terreno...
+[11:53:38] ✅ Perfil Stack Generado: E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Perfiles\PERFIL_260206_MP_S5_CORONAMIENTO.jpg (2 capas)
+[11:53:38] ⚙️ [Paso 4/4] Iniciando Pegado Incremental...
+[11:53:38] 💾 Guardando backup en snapshot_260206_MP_S5_CORONAMIENTO.tif...
+[11:53:39] ⚙️ Aplicando talud. Tamaño matriz: (4097, 7614)
+[11:53:43] ✅ Parche '260206_MP_S5_CORONAMIENTO' pegado correctamente sobre 'DEM_MP_260130' con suavizado
+[11:53:43] ✔️ Fila completada exitosamente: 260206_MP_S5_CORONAMIENTO
+[11:53:43] ⚙️ [Paso 1/4] Calculando volúmenes para 260206_MP_S6_TALUD_2-3...
+[11:53:43] ⚠️ CRS inválido para TIN 260206_MP_S6_TALUD_2-3, asignando CRS del proyecto: EPSG:32719
+[11:53:43] 📊 Filtrado de outliers para 260206_MP_S6_TALUD_2-3:
+[11:53:43]    🔢 Píxeles válidos: 229640
+[11:53:43]    📈 Rango original: 0.0000m - 5.6750m
+[11:53:43]    🎯 Percentiles P1/P95: 0.0320m - 3.3480m
+[11:53:43]    🚫 Outliers eliminados: 13779 píxeles (2297 bajos, 11482 altos)
+[11:53:43]    ✅ Rango filtrado: 0.0320m - 3.3480m
+[11:53:43]    📉 Espesor máximo reducido en 41.0% (5.6750m → 3.3480m)
+[11:53:43] ✔️ Campos de volúmenes y espesores actualizados en la tabla para 260206_MP_S6_TALUD_2-3
+[11:53:43] ✔️ Volúmenes y espesores calculados para 260206_MP_S6_TALUD_2-3: Corte=21531.32 m³, Relleno=700.03 m³, Espesor medio=-1.4514m, Espesor mínimo=0.032m, Espesor máximo=3.348m
+[11:53:43] ⚙️ [Paso 2/4] Preparando pantallazos de diferencias...
+[11:53:43] 📐 Promedios pares: Par1(P1-P2/P3-P4)=176.39m, Par2(P1-P3/P2-P4)=151.98m, Par3(P1-P4/P2-P3)=91.92m
+[11:53:43] 📏 Perfil longitudinal: entre medios de P1-P4 y P2-P3
+[11:53:43] ✅ Línea central cargada desde 'Eje Central' (260206_MP_S6_TALUD_2-3)
+[11:53:43] ✅ Diferencia calculada: 260206_MP_S6_TALUD_2-3
+[11:53:43] 📸 Exportando layout a E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Planos\P260206_MP_S6_TALUD_2-3.jpg...
+[11:53:43] ⚙️ Aplicando simbología adaptativa para corte/relleno en Diff_260206_MP_S6_TALUD_2-3...
+[11:53:43] 🎨 Creando escala adaptativa: Corte máximo -5.68m, Relleno máximo 1.11m
+[11:53:44] 📏 Línea de perfil con etiqueta agregada al pantallazo
+[11:53:44] ✅ Pantallazo de diferencia DEM exportado: E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Planos\P260206_MP_S6_TALUD_2-3.jpg
+[11:53:44] ⚙️ [Paso 3/4] Construyendo perfil de capas (Stack)...
+[11:53:44] 📐 Promedios pares: Par1(P1-P2/P3-P4)=176.39m, Par2(P1-P3/P2-P4)=151.98m, Par3(P1-P4/P2-P3)=91.92m
+[11:53:44] 📏 Perfil longitudinal: entre medios de P1-P4 y P2-P3
+[11:53:44] ✅ Línea central cargada desde 'Eje Central' (260206_MP_S6_TALUD_2-3)
+[11:53:44] 📐 Muestreando modelo de multicapas en el terreno...
+[11:53:44] ✅ Perfil Stack Generado: E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Perfiles\PERFIL_260206_MP_S6_TALUD_2-3.jpg (2 capas)
+[11:53:44] ⚙️ [Paso 4/4] Iniciando Pegado Incremental...
+[11:53:44] 💾 Guardando backup en snapshot_260206_MP_S6_TALUD_2-3.tif...
+[11:53:44] ⚙️ Aplicando talud. Tamaño matriz: (4097, 7614)
+[11:53:49] ✅ Parche '260206_MP_S6_TALUD_2-3' pegado correctamente sobre 'DEM_MP_260130' con suavizado
+[11:53:49] ✔️ Fila completada exitosamente: 260206_MP_S6_TALUD_2-3
+[11:53:49] ⚙️ [Paso 1/4] Calculando volúmenes para 260210_MP_S4_COR_LADO TALUD_NIVELACION...
+[11:53:49] 📊 Filtrado de outliers para 260210_MP_S4_COR_LADO TALUD_NIVELACION:
+[11:53:49]    🔢 Píxeles válidos: 3665
+[11:53:49]    📈 Rango original: 0.0004m - 0.6766m
+[11:53:49]    🎯 Percentiles P1/P95: 0.0217m - 0.4346m
+[11:53:49]    🚫 Outliers eliminados: 221 píxeles (37 bajos, 184 altos)
+[11:53:49]    ✅ Rango filtrado: 0.0217m - 0.4346m
+[11:53:49]    📉 Espesor máximo reducido en 35.8% (0.6766m → 0.4346m)
+[11:53:49] ✔️ Campos de volúmenes y espesores actualizados en la tabla para 260210_MP_S4_COR_LADO TALUD_NIVELACION
+[11:53:49] ✔️ Volúmenes y espesores calculados para 260210_MP_S4_COR_LADO TALUD_NIVELACION: Corte=18.89 m³, Relleno=52.13 m³, Espesor medio=0.1455m, Espesor mínimo=0.0217m, Espesor máximo=0.4346m
+[11:53:49] ⚙️ [Paso 2/4] Preparando pantallazos de diferencias...
+[11:53:49] 📐 Promedios pares: Par1(P1-P2/P3-P4)=27.83m, Par2(P1-P3/P2-P4)=26.88m, Par3(P1-P4/P2-P3)=7.36m
+[11:53:49] 📏 Perfil longitudinal: entre medios de P1-P4 y P2-P3
+[11:53:49] ✅ Línea central cargada desde 'Eje Central' (260210_MP_S4_COR_LADO TALUD_NIVELACION)
+[11:53:49] ✅ Diferencia calculada: 260210_MP_S4_COR_LADO TALUD_NIVELACION
+[11:53:49] 📸 Exportando layout a E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Planos\P260210_MP_S4_COR_LADO TALUD_NIVELACION.jpg...
+[11:53:49] ⚙️ Aplicando simbología adaptativa para corte/relleno en Diff_260210_MP_S4_COR_LADO TALUD_NIVELACION...
+[11:53:49] 🎨 Creando escala adaptativa: Corte máximo -0.68m, Relleno máximo 0.48m
+[11:53:49] 📏 Línea de perfil con etiqueta agregada al pantallazo
+[11:53:49] ✅ Pantallazo de diferencia DEM exportado: E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Planos\P260210_MP_S4_COR_LADO TALUD_NIVELACION.jpg
+[11:53:49] ⚙️ [Paso 3/4] Construyendo perfil de capas (Stack)...
+[11:53:49] 📐 Promedios pares: Par1(P1-P2/P3-P4)=27.83m, Par2(P1-P3/P2-P4)=26.88m, Par3(P1-P4/P2-P3)=7.36m
+[11:53:49] 📏 Perfil longitudinal: entre medios de P1-P4 y P2-P3
+[11:53:49] ✅ Línea central cargada desde 'Eje Central' (260210_MP_S4_COR_LADO TALUD_NIVELACION)
+[11:53:49] 📐 Muestreando modelo de multicapas en el terreno...
+[11:53:49] ✅ Perfil Stack Generado: E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Perfiles\PERFIL_260210_MP_S4_COR_LADO TALUD_NIVELACION.jpg (2 capas)
+[11:53:49] ⚙️ [Paso 4/4] Iniciando Pegado Incremental...
+[11:53:49] 💾 Guardando backup en snapshot_260210_MP_S4_COR_LADO TALUD_NIVELACION.tif...
+[11:53:50] ⚙️ Aplicando talud. Tamaño matriz: (4097, 7614)
+[11:53:54] ✅ Parche '260210_MP_S4_COR_LADO TALUD_NIVELACION' pegado correctamente sobre 'DEM_MP_260130' con suavizado
+[11:53:54] ✔️ Fila completada exitosamente: 260210_MP_S4_COR_LADO TALUD_NIVELACION
+[11:53:54] ⚙️ [Paso 1/4] Calculando volúmenes para 260210_MP_S5_COR_LADO TALUD_NIVELACION...
+[11:53:54] 📊 Filtrado de outliers para 260210_MP_S5_COR_LADO TALUD_NIVELACION:
+[11:53:54]    🔢 Píxeles válidos: 21981
+[11:53:54]    📈 Rango original: 0.0002m - 1.3787m
+[11:53:54]    🎯 Percentiles P1/P95: 0.0208m - 0.4498m
+[11:53:54]    🚫 Outliers eliminados: 1319 píxeles (220 bajos, 1099 altos)
+[11:53:54]    ✅ Rango filtrado: 0.0208m - 0.4498m
+[11:53:54]    📉 Espesor máximo reducido en 67.4% (1.3787m → 0.4498m)
+[11:53:54] ✔️ Campos de volúmenes y espesores actualizados en la tabla para 260210_MP_S5_COR_LADO TALUD_NIVELACION
+[11:53:54] ✔️ Volúmenes y espesores calculados para 260210_MP_S5_COR_LADO TALUD_NIVELACION: Corte=25.24 m³, Relleno=375.77 m³, Espesor medio=0.2553m, Espesor mínimo=0.0208m, Espesor máximo=0.4498m
+[11:53:54] ⚙️ [Paso 2/4] Preparando pantallazos de diferencias...
+[11:53:54] 📐 Promedios pares: Par1(P1-P2/P3-P4)=217.87m, Par2(P1-P3/P2-P4)=217.74m, Par3(P1-P4/P2-P3)=7.41m
+[11:53:54] 📏 Perfil longitudinal: entre medios de P1-P4 y P2-P3
+[11:53:54] ✅ Línea central cargada desde 'Eje Central' (260210_MP_S5_COR_LADO TALUD_NIVELACION)
+[11:53:54] ✅ Diferencia calculada: 260210_MP_S5_COR_LADO TALUD_NIVELACION
+[11:53:54] 📸 Exportando layout a E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Planos\P260210_MP_S5_COR_LADO TALUD_NIVELACION.jpg...
+[11:53:54] ⚙️ Aplicando simbología adaptativa para corte/relleno en Diff_260210_MP_S5_COR_LADO TALUD_NIVELACION...
+[11:53:54] 🎨 Creando escala adaptativa: Corte máximo -1.38m, Relleno máximo 0.55m
+[11:53:55] 📏 Línea de perfil con etiqueta agregada al pantallazo
+[11:53:55] ✅ Pantallazo de diferencia DEM exportado: E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Planos\P260210_MP_S5_COR_LADO TALUD_NIVELACION.jpg
+[11:53:55] ⚙️ [Paso 3/4] Construyendo perfil de capas (Stack)...
+[11:53:55] 📐 Promedios pares: Par1(P1-P2/P3-P4)=217.87m, Par2(P1-P3/P2-P4)=217.74m, Par3(P1-P4/P2-P3)=7.41m
+[11:53:55] 📏 Perfil longitudinal: entre medios de P1-P4 y P2-P3
+[11:53:55] ✅ Línea central cargada desde 'Eje Central' (260210_MP_S5_COR_LADO TALUD_NIVELACION)
+[11:53:55] 📐 Muestreando modelo de multicapas en el terreno...
+[11:53:55] ✅ Perfil Stack Generado: E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Perfiles\PERFIL_260210_MP_S5_COR_LADO TALUD_NIVELACION.jpg (2 capas)
+[11:53:55] ⚙️ [Paso 4/4] Iniciando Pegado Incremental...
+[11:53:55] 💾 Guardando backup en snapshot_260210_MP_S5_COR_LADO TALUD_NIVELACION.tif...
+[11:53:55] ⚙️ Aplicando talud. Tamaño matriz: (4097, 7614)
+[11:54:00] ✅ Parche '260210_MP_S5_COR_LADO TALUD_NIVELACION' pegado correctamente sobre 'DEM_MP_260130' con suavizado
+[11:54:00] ✔️ Fila completada exitosamente: 260210_MP_S5_COR_LADO TALUD_NIVELACION
+[11:54:00] ⚙️ [Paso 1/4] Calculando volúmenes para 260212_MP_S6_TALUD MEDIO BAJO...
+[11:54:00] ⚠️ CRS inválido para TIN 260212_MP_S6_TALUD MEDIO BAJO, asignando CRS del proyecto: EPSG:32719
+[11:54:00] 📊 Filtrado de outliers para 260212_MP_S6_TALUD MEDIO BAJO:
+[11:54:00]    🔢 Píxeles válidos: 479158
+[11:54:00]    📈 Rango original: 0.0000m - 9.9500m
+[11:54:00]    🎯 Percentiles P1/P95: 0.0480m - 6.2252m
+[11:54:00]    🚫 Outliers eliminados: 28750 píxeles (4792 bajos, 23958 altos)
+[11:54:00]    ✅ Rango filtrado: 0.0480m - 6.2252m
+[11:54:00]    📉 Espesor máximo reducido en 37.4% (9.9500m → 6.2252m)
+[11:54:00] ✔️ Campos de volúmenes y espesores actualizados en la tabla para 260212_MP_S6_TALUD MEDIO BAJO
+[11:54:00] ✔️ Volúmenes y espesores calculados para 260212_MP_S6_TALUD MEDIO BAJO: Corte=12503.83 m³, Relleno=1271.55 m³, Espesor medio=-2.3442m, Espesor mínimo=0.048m, Espesor máximo=6.2252m
+[11:54:00] ⚙️ [Paso 2/4] Preparando pantallazos de diferencias...
+[11:54:00] 📐 Promedios pares: Par1(P1-P2/P3-P4)=125.18m, Par2(P1-P3/P2-P4)=120.20m, Par3(P1-P4/P2-P3)=36.73m
+[11:54:00] 📏 Perfil longitudinal: entre medios de P1-P4 y P2-P3
+[11:54:00] ✅ Línea central cargada desde 'Eje Central' (260212_MP_S6_TALUD MEDIO BAJO)
+[11:54:00] ✅ Diferencia calculada: 260212_MP_S6_TALUD MEDIO BAJO
+[11:54:00] 📸 Exportando layout a E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Planos\P260212_MP_S6_TALUD MEDIO BAJO.jpg...
+[11:54:00] ⚙️ Aplicando simbología adaptativa para corte/relleno en Diff_260212_MP_S6_TALUD MEDIO BAJO...
+[11:54:00] 🎨 Creando escala adaptativa: Corte máximo -8.67m, Relleno máximo 10.76m
+[11:54:00] 📏 Línea de perfil con etiqueta agregada al pantallazo
+[11:54:00] ✅ Pantallazo de diferencia DEM exportado: E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Planos\P260212_MP_S6_TALUD MEDIO BAJO.jpg
+[11:54:00] ⚙️ [Paso 3/4] Construyendo perfil de capas (Stack)...
+[11:54:00] 📐 Promedios pares: Par1(P1-P2/P3-P4)=125.18m, Par2(P1-P3/P2-P4)=120.20m, Par3(P1-P4/P2-P3)=36.73m
+[11:54:00] 📏 Perfil longitudinal: entre medios de P1-P4 y P2-P3
+[11:54:00] ✅ Línea central cargada desde 'Eje Central' (260212_MP_S6_TALUD MEDIO BAJO)
+[11:54:00] 📐 Muestreando modelo de multicapas en el terreno...
+[11:54:00] ✅ Perfil Stack Generado: E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Perfiles\PERFIL_260212_MP_S6_TALUD MEDIO BAJO.jpg (2 capas)
+[11:54:00] ⚙️ [Paso 4/4] Iniciando Pegado Incremental...
+[11:54:00] 💾 Guardando backup en snapshot_260212_MP_S6_TALUD MEDIO BAJO.tif...
+[11:54:00] ⚠️ Detectada diferencia de resolución: Muro=0.250m vs Parche=0.100m
+[11:54:00] 🔄 Realizando UPSAMPLING automático del Muro a 0.100m para máxima calidad...
+[11:54:54] ❌ Error reemplazando archivo upsampled: [WinError 32] El proceso no tiene acceso al archivo porque está siendo utilizado por otro proceso: 'C:\\Users\\LT_GAB~1\\AppData\\Local\\Temp\\DEM_MP_260130_work.tif'
+[11:54:59] ⚙️ Aplicando talud. Tamaño matriz: (10242, 19035)
+[11:55:34] ✅ Parche '260212_MP_S6_TALUD MEDIO BAJO' pegado correctamente sobre 'DEM_MP_260130' con suavizado
+[11:55:34] ✔️ Fila completada exitosamente: 260212_MP_S6_TALUD MEDIO BAJO
+[11:55:34] ⚙️ [Paso 1/4] Calculando volúmenes para 260213_MP_S5_PLAT21...
+[11:55:34] ⚠️ CRS inválido para TIN 260213_MP_S5_PLAT21, asignando CRS del proyecto: EPSG:32719
+[11:55:35] 📊 Filtrado de outliers para 260213_MP_S5_PLAT21:
+[11:55:35]    🔢 Píxeles válidos: 476346
+[11:55:35]    📈 Rango original: 0.0001m - 1.5113m
+[11:55:35]    🎯 Percentiles P1/P95: 0.4450m - 1.2023m
+[11:55:35]    🚫 Outliers eliminados: 28582 píxeles (4764 bajos, 23818 altos)
+[11:55:35]    ✅ Rango filtrado: 0.4450m - 1.2023m
+[11:55:35]    📉 Espesor máximo reducido en 20.4% (1.5113m → 1.2023m)
+[11:55:35] ✔️ Campos de volúmenes y espesores actualizados en la tabla para 260213_MP_S5_PLAT21
+[11:55:35] ✔️ Volúmenes y espesores calculados para 260213_MP_S5_PLAT21: Corte=0.22 m³, Relleno=4156.47 m³, Espesor medio=0.8725m, Espesor mínimo=0.445m, Espesor máximo=1.2023m
+[11:55:35] ⚙️ [Paso 2/4] Preparando pantallazos de diferencias...
+[11:55:35] 📐 Promedios pares: Par1(P1-P2/P3-P4)=121.19m, Par2(P1-P3/P2-P4)=114.12m, Par3(P1-P4/P2-P3)=41.59m
+[11:55:35] 📏 Perfil longitudinal: entre medios de P1-P4 y P2-P3
+[11:55:35] ✅ Línea central cargada desde 'Eje Central' (260213_MP_S5_PLAT21)
+[11:55:35] ✅ Diferencia calculada: 260213_MP_S5_PLAT21
+[11:55:35] 📸 Exportando layout a E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Planos\P260213_MP_S5_PLAT21.jpg...
+[11:55:35] ⚙️ Aplicando simbología adaptativa para corte/relleno en Diff_260213_MP_S5_PLAT21...
+[11:55:35] 🎨 Creando escala adaptativa: Corte máximo -0.42m, Relleno máximo 1.51m
+[11:55:35] 📏 Línea de perfil con etiqueta agregada al pantallazo
+[11:55:35] ✅ Pantallazo de diferencia DEM exportado: E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Planos\P260213_MP_S5_PLAT21.jpg
+[11:55:35] ⚙️ [Paso 3/4] Construyendo perfil de capas (Stack)...
+[11:55:35] 📐 Promedios pares: Par1(P1-P2/P3-P4)=121.19m, Par2(P1-P3/P2-P4)=114.12m, Par3(P1-P4/P2-P3)=41.59m
+[11:55:35] 📏 Perfil longitudinal: entre medios de P1-P4 y P2-P3
+[11:55:35] ✅ Línea central cargada desde 'Eje Central' (260213_MP_S5_PLAT21)
+[11:55:35] 📐 Muestreando modelo de multicapas en el terreno...
+[11:55:35] ✅ Perfil Stack Generado: E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Perfiles\PERFIL_260213_MP_S5_PLAT21.jpg (2 capas)
+[11:55:35] ⚙️ [Paso 4/4] Iniciando Pegado Incremental...
+[11:55:35] 💾 Guardando backup en snapshot_260213_MP_S5_PLAT21.tif...
+[11:55:40] ⚙️ Aplicando talud. Tamaño matriz: (10242, 19035)
+[11:56:16] ✅ Parche '260213_MP_S5_PLAT21' pegado correctamente sobre 'DEM_MP_260130' con suavizado
+[11:56:16] ✔️ Fila completada exitosamente: 260213_MP_S5_PLAT21
+[11:56:16] ⚙️ [Paso 1/4] Calculando volúmenes para 260216_MP_S5_TALUD MEDIO...
+[11:56:16] 📊 Filtrado de outliers para 260216_MP_S5_TALUD MEDIO:
+[11:56:16]    🔢 Píxeles válidos: 828349
+[11:56:16]    📈 Rango original: 0.0001m - 1.9813m
+[11:56:16]    🎯 Percentiles P1/P95: 0.0195m - 1.5842m
+[11:56:16]    🚫 Outliers eliminados: 49679 píxeles (8283 bajos, 41396 altos)
+[11:56:16]    ✅ Rango filtrado: 0.0195m - 1.5842m
+[11:56:16]    📉 Espesor máximo reducido en 20.0% (1.9813m → 1.5842m)
+[11:56:16] ✔️ Campos de volúmenes y espesores actualizados en la tabla para 260216_MP_S5_TALUD MEDIO
+[11:56:16] ✔️ Volúmenes y espesores calculados para 260216_MP_S5_TALUD MEDIO: Corte=128.28 m³, Relleno=6531.45 m³, Espesor medio=0.7732m, Espesor mínimo=0.0195m, Espesor máximo=1.5842m
+[11:56:16] ⚙️ [Paso 2/4] Preparando pantallazos de diferencias...
+[11:56:16] 📐 Promedios pares: Par1(P1-P2/P3-P4)=119.56m, Par2(P1-P3/P2-P4)=100.27m, Par3(P1-P4/P2-P3)=70.27m
+[11:56:16] 📏 Perfil longitudinal: entre medios de P1-P4 y P2-P3
+[11:56:16] ✅ Línea central cargada desde 'Eje Central' (260216_MP_S5_TALUD MEDIO)
+[11:56:16] ✅ Diferencia calculada: 260216_MP_S5_TALUD MEDIO
+[11:56:16] 📸 Exportando layout a E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Planos\P260216_MP_S5_TALUD MEDIO.jpg...
+[11:56:16] ⚙️ Aplicando simbología adaptativa para corte/relleno en Diff_260216_MP_S5_TALUD MEDIO...
+[11:56:16] 🎨 Creando escala adaptativa: Corte máximo -1.37m, Relleno máximo 1.93m
+[11:56:16] 📏 Línea de perfil con etiqueta agregada al pantallazo
+[11:56:16] ✅ Pantallazo de diferencia DEM exportado: E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Planos\P260216_MP_S5_TALUD MEDIO.jpg
+[11:56:16] ⚙️ [Paso 3/4] Construyendo perfil de capas (Stack)...
+[11:56:16] 📐 Promedios pares: Par1(P1-P2/P3-P4)=119.56m, Par2(P1-P3/P2-P4)=100.27m, Par3(P1-P4/P2-P3)=70.27m
+[11:56:16] 📏 Perfil longitudinal: entre medios de P1-P4 y P2-P3
+[11:56:16] ✅ Línea central cargada desde 'Eje Central' (260216_MP_S5_TALUD MEDIO)
+[11:56:16] 📐 Muestreando modelo de multicapas en el terreno...
+[11:56:16] ✅ Perfil Stack Generado: E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Perfiles\PERFIL_260216_MP_S5_TALUD MEDIO.jpg (2 capas)
+[11:56:16] ⚙️ [Paso 4/4] Iniciando Pegado Incremental...
+[11:56:16] 💾 Guardando backup en snapshot_260216_MP_S5_TALUD MEDIO.tif...
+[11:56:20] ⚙️ Aplicando talud. Tamaño matriz: (10242, 19035)
+[11:56:56] ✅ Parche '260216_MP_S5_TALUD MEDIO' pegado correctamente sobre 'DEM_MP_260130' con suavizado
+[11:56:56] ✔️ Fila completada exitosamente: 260216_MP_S5_TALUD MEDIO
+[11:56:56] ⚙️ [Paso 1/4] Calculando volúmenes para 260217_MP_S5_TALUD MEDIO...
+[11:56:56] ⚠️ CRS inválido para TIN 260217_MP_S5_TALUD MEDIO, asignando CRS del proyecto: EPSG:32719
+[11:56:56] 📊 Filtrado de outliers para 260217_MP_S5_TALUD MEDIO:
+[11:56:56]    🔢 Píxeles válidos: 1036216
+[11:56:56]    📈 Rango original: 0.0000m - 2.3843m
+[11:56:56]    🎯 Percentiles P1/P95: 0.0042m - 0.8254m
+[11:56:56]    🚫 Outliers eliminados: 62173 píxeles (10362 bajos, 51811 altos)
+[11:56:56]    ✅ Rango filtrado: 0.0100m - 0.8254m
+[11:56:56]    📉 Espesor máximo reducido en 65.4% (2.3843m → 0.8254m)
+[11:56:57] ✔️ Campos de volúmenes y espesores actualizados en la tabla para 260217_MP_S5_TALUD MEDIO
+[11:56:57] ✔️ Volúmenes y espesores calculados para 260217_MP_S5_TALUD MEDIO: Corte=1277.18 m³, Relleno=1672.57 m³, Espesor medio=0.0382m, Espesor mínimo=0.01m, Espesor máximo=0.8254m
+[11:56:57] ⚙️ [Paso 2/4] Preparando pantallazos de diferencias...
+[11:56:57] 📐 Promedios pares: Par1(P1-P2/P3-P4)=140.40m, Par2(P1-P3/P2-P4)=98.14m, Par3(P1-P4/P2-P3)=100.68m
+[11:56:57] 📏 Perfil longitudinal: entre medios de P1-P3 y P2-P4
+[11:56:57] ✅ Línea central cargada desde 'Eje Central' (260217_MP_S5_TALUD MEDIO)
+[11:56:57] ✅ Diferencia calculada: 260217_MP_S5_TALUD MEDIO
+[11:56:57] 📸 Exportando layout a E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Planos\P260217_MP_S5_TALUD MEDIO.jpg...
+[11:56:57] ⚙️ Aplicando simbología adaptativa para corte/relleno en Diff_260217_MP_S5_TALUD MEDIO...
+[11:56:57] 🎨 Creando escala adaptativa: Corte máximo -1.10m, Relleno máximo 2.38m
+[11:56:57] 📏 Línea de perfil con etiqueta agregada al pantallazo
+[11:56:57] ✅ Pantallazo de diferencia DEM exportado: E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Planos\P260217_MP_S5_TALUD MEDIO.jpg
+[11:56:57] ⚙️ [Paso 3/4] Construyendo perfil de capas (Stack)...
+[11:56:57] 📐 Promedios pares: Par1(P1-P2/P3-P4)=140.40m, Par2(P1-P3/P2-P4)=98.14m, Par3(P1-P4/P2-P3)=100.68m
+[11:56:57] 📏 Perfil longitudinal: entre medios de P1-P3 y P2-P4
+[11:56:57] ✅ Línea central cargada desde 'Eje Central' (260217_MP_S5_TALUD MEDIO)
+[11:56:57] 📐 Muestreando modelo de multicapas en el terreno...
+[11:56:57] ✅ Perfil Stack Generado: E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Perfiles\PERFIL_260217_MP_S5_TALUD MEDIO.jpg (2 capas)
+[11:56:57] ⚙️ [Paso 4/4] Iniciando Pegado Incremental...
+[11:56:57] 💾 Guardando backup en snapshot_260217_MP_S5_TALUD MEDIO.tif...
+[11:57:02] ⚙️ Aplicando talud. Tamaño matriz: (10242, 19035)
+[11:57:38] ✅ Parche '260217_MP_S5_TALUD MEDIO' pegado correctamente sobre 'DEM_MP_260130' con suavizado
+[11:57:38] ✔️ Fila completada exitosamente: 260217_MP_S5_TALUD MEDIO
+[11:57:38] ⚙️ [Paso 1/4] Calculando volúmenes para 260217_MP_S5_TALUD MEDIO_ARRIBA BADEN...
+[11:57:38] ⚠️ CRS inválido para TIN 260217_MP_S5_TALUD MEDIO_ARRIBA BADEN, asignando CRS del proyecto: EPSG:32719
+[11:57:38] 📊 Filtrado de outliers para 260217_MP_S5_TALUD MEDIO_ARRIBA BADEN:
+[11:57:38]    🔢 Píxeles válidos: 159037
+[11:57:38]    📈 Rango original: 0.0000m - 2.4988m
+[11:57:38]    🎯 Percentiles P1/P95: 0.0171m - 1.7029m
+[11:57:38]    🚫 Outliers eliminados: 9543 píxeles (1591 bajos, 7952 altos)
+[11:57:38]    ✅ Rango filtrado: 0.0171m - 1.7029m
+[11:57:38]    📉 Espesor máximo reducido en 31.9% (2.4988m → 1.7029m)
+[11:57:38] ✔️ Campos de volúmenes y espesores actualizados en la tabla para 260217_MP_S5_TALUD MEDIO_ARRIBA BADEN
+[11:57:38] ✔️ Volúmenes y espesores calculados para 260217_MP_S5_TALUD MEDIO_ARRIBA BADEN: Corte=468.34 m³, Relleno=751.76 m³, Espesor medio=0.1782m, Espesor mínimo=0.0171m, Espesor máximo=1.7029m
+[11:57:38] ⚙️ [Paso 2/4] Preparando pantallazos de diferencias...
+[11:57:38] 📐 Promedios pares: Par1(P1-P2/P3-P4)=57.60m, Par2(P1-P3/P2-P4)=34.96m, Par3(P1-P4/P2-P3)=45.89m
+[11:57:38] 📏 Perfil longitudinal: entre medios de P1-P3 y P2-P4
+[11:57:38] ✅ Línea central cargada desde 'Eje Central' (260217_MP_S5_TALUD MEDIO_ARRIBA BADEN)
+[11:57:38] ✅ Diferencia calculada: 260217_MP_S5_TALUD MEDIO_ARRIBA BADEN
+[11:57:38] 📸 Exportando layout a E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Planos\P260217_MP_S5_TALUD MEDIO_ARRIBA BADEN.jpg...
+[11:57:38] ⚙️ Aplicando simbología adaptativa para corte/relleno en Diff_260217_MP_S5_TALUD MEDIO_ARRIBA BADEN...
+[11:57:38] 🎨 Creando escala adaptativa: Corte máximo -1.64m, Relleno máximo 2.50m
+[11:57:38] 📏 Línea de perfil con etiqueta agregada al pantallazo
+[11:57:38] ✅ Pantallazo de diferencia DEM exportado: E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Planos\P260217_MP_S5_TALUD MEDIO_ARRIBA BADEN.jpg
+[11:57:38] ⚙️ [Paso 3/4] Construyendo perfil de capas (Stack)...
+[11:57:38] 📐 Promedios pares: Par1(P1-P2/P3-P4)=57.60m, Par2(P1-P3/P2-P4)=34.96m, Par3(P1-P4/P2-P3)=45.89m
+[11:57:38] 📏 Perfil longitudinal: entre medios de P1-P3 y P2-P4
+[11:57:38] ✅ Línea central cargada desde 'Eje Central' (260217_MP_S5_TALUD MEDIO_ARRIBA BADEN)
+[11:57:38] 📐 Muestreando modelo de multicapas en el terreno...
+[11:57:39] ✅ Perfil Stack Generado: E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Perfiles\PERFIL_260217_MP_S5_TALUD MEDIO_ARRIBA BADEN.jpg (2 capas)
+[11:57:39] ⚙️ [Paso 4/4] Iniciando Pegado Incremental...
+[11:57:39] 💾 Guardando backup en snapshot_260217_MP_S5_TALUD MEDIO_ARRIBA BADEN.tif...
+[11:57:43] ⚙️ Aplicando talud. Tamaño matriz: (10242, 19035)
+[11:58:19] ✅ Parche '260217_MP_S5_TALUD MEDIO_ARRIBA BADEN' pegado correctamente sobre 'DEM_MP_260130' con suavizado
+[11:58:19] ✔️ Fila completada exitosamente: 260217_MP_S5_TALUD MEDIO_ARRIBA BADEN
+[11:58:21] ✅ DEM_ME_260203 ahora trabaja sobre temporal: C:\Users\LT_GAB~1\AppData\Local\Temp\DEM_ME_260203_work.tif
+[11:58:21] 💾 DEM Original (Virgen) respaldado para perfil topográfico: C:\Users\LT_GAB~1\AppData\Local\Temp\DEM_ME_260203_original_ref.tif
+[11:58:21] ⚙️ [Paso 1/4] Calculando volúmenes para 260219_ME_S3_PLAT1...
+[11:58:21] ⚠️ CRS inválido para TIN 260219_ME_S3_PLAT1, asignando CRS del proyecto: EPSG:32719
+[11:58:21] ⚠️ CRS inválido para base DEM DEM_ME_260203, asignando CRS del proyecto: EPSG:32719
+[11:58:21] 📊 Filtrado de outliers para 260219_ME_S3_PLAT1:
+[11:58:21]    🔢 Píxeles válidos: 76501
+[11:58:21]    📈 Rango original: 0.0000m - 1.5200m
+[11:58:21]    🎯 Percentiles P1/P95: 0.0230m - 0.9150m
+[11:58:21]    🚫 Outliers eliminados: 4588 píxeles (765 bajos, 3823 altos)
+[11:58:21]    ✅ Rango filtrado: 0.0230m - 0.9150m
+[11:58:21]    📉 Espesor máximo reducido en 39.8% (1.5200m → 0.9150m)
+[11:58:21] ✔️ Campos de volúmenes y espesores actualizados en la tabla para 260219_ME_S3_PLAT1
+[11:58:21] ✔️ Volúmenes y espesores calculados para 260219_ME_S3_PLAT1: Corte=8.96 m³, Relleno=443.78 m³, Espesor medio=0.5684m, Espesor mínimo=0.023m, Espesor máximo=0.915m
+[11:58:21] ⚙️ [Paso 2/4] Preparando pantallazos de diferencias...
+[11:58:21] 📐 Promedios pares: Par1(P1-P2/P3-P4)=138.94m, Par2(P1-P3/P2-P4)=4.27m, Par3(P1-P4/P2-P3)=138.88m
+[11:58:21] 📏 Perfil longitudinal: entre medios de P1-P3 y P2-P4
+[11:58:21] ✅ Línea central cargada desde 'Eje Central' (260219_ME_S3_PLAT1)
+[11:58:22] ✅ Diferencia calculada: 260219_ME_S3_PLAT1
+[11:58:22] 📸 Exportando layout a E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Planos\P260219_ME_S3_PLAT1.jpg...
+[11:58:22] ⚙️ Aplicando simbología adaptativa para corte/relleno en Diff_260219_ME_S3_PLAT1...
+[11:58:22] 🎨 Creando escala adaptativa: Corte máximo -1.17m, Relleno máximo 1.52m
+[11:58:22] 📏 Línea de perfil con etiqueta agregada al pantallazo
+[11:58:22] ✅ Pantallazo de diferencia DEM exportado: E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Planos\P260219_ME_S3_PLAT1.jpg
+[11:58:22] ⚙️ [Paso 3/4] Construyendo perfil de capas (Stack)...
+[11:58:22] 📐 Promedios pares: Par1(P1-P2/P3-P4)=138.94m, Par2(P1-P3/P2-P4)=4.27m, Par3(P1-P4/P2-P3)=138.88m
+[11:58:22] 📏 Perfil longitudinal: entre medios de P1-P3 y P2-P4
+[11:58:22] ✅ Línea central cargada desde 'Eje Central' (260219_ME_S3_PLAT1)
+[11:58:22] 📐 Muestreando modelo de multicapas en el terreno...
+[11:58:22] ✅ Perfil Stack Generado: E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Perfiles\PERFIL_260219_ME_S3_PLAT1.jpg (2 capas)
+[11:58:22] ⚙️ [Paso 4/4] Iniciando Pegado Incremental...
+[11:58:22] 💾 Guardando backup en snapshot_260219_ME_S3_PLAT1.tif...
+[11:58:22] ⚠️ Detectada diferencia de resolución: Muro=0.250m vs Parche=0.100m
+[11:58:22] 🔄 Realizando UPSAMPLING automático del Muro a 0.100m para máxima calidad...
+[11:58:54] ❌ Error reemplazando archivo upsampled: [WinError 32] El proceso no tiene acceso al archivo porque está siendo utilizado por otro proceso: 'C:\\Users\\LT_GAB~1\\AppData\\Local\\Temp\\DEM_ME_260203_work.tif'
+[11:58:54] ⚠️ CRS no definido en DEM_ME_260203, asignando EPSG:32719
+[11:58:57] ⚙️ Aplicando talud. Tamaño matriz: (10032, 10185)
+[11:59:16] ✅ Parche '260219_ME_S3_PLAT1' pegado correctamente sobre 'DEM_ME_260203' con suavizado
+[11:59:16] ✔️ Fila completada exitosamente: 260219_ME_S3_PLAT1
+[11:59:16] ⚙️ [Paso 1/4] Calculando volúmenes para 260219_MP_S3_PLAT1...
+[11:59:16] ⚠️ CRS inválido para TIN 260219_MP_S3_PLAT1, asignando CRS del proyecto: EPSG:32719
+[11:59:17] 📊 Filtrado de outliers para 260219_MP_S3_PLAT1:
+[11:59:17]    🔢 Píxeles válidos: 198742
+[11:59:17]    📈 Rango original: 0.0000m - 4.5746m
+[11:59:17]    🎯 Percentiles P1/P95: 0.1621m - 4.2712m
+[11:59:17]    🚫 Outliers eliminados: 11926 píxeles (1988 bajos, 9938 altos)
+[11:59:17]    ✅ Rango filtrado: 0.1621m - 4.2712m
+[11:59:17]    📉 Espesor máximo reducido en 6.6% (4.5746m → 4.2712m)
+[11:59:17] ✔️ Campos de volúmenes y espesores actualizados en la tabla para 260219_MP_S3_PLAT1
+[11:59:17] ✔️ Volúmenes y espesores calculados para 260219_MP_S3_PLAT1: Corte=6412.28 m³, Relleno=7.25 m³, Espesor medio=-3.2228m, Espesor mínimo=0.1621m, Espesor máximo=4.2712m
+[11:59:17] ⚙️ [Paso 2/4] Preparando pantallazos de diferencias...
+[11:59:17] 📐 Promedios pares: Par1(P1-P2/P3-P4)=175.83m, Par2(P1-P3/P2-P4)=175.45m, Par3(P1-P4/P2-P3)=11.80m
+[11:59:17] 📏 Perfil longitudinal: entre medios de P1-P4 y P2-P3
+[11:59:17] ✅ Línea central cargada desde 'Eje Central' (260219_MP_S3_PLAT1)
+[11:59:17] ✅ Diferencia calculada: 260219_MP_S3_PLAT1
+[11:59:17] 📸 Exportando layout a E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Planos\P260219_MP_S3_PLAT1.jpg...
+[11:59:17] ⚙️ Aplicando simbología adaptativa para corte/relleno en Diff_260219_MP_S3_PLAT1...
+[11:59:17] 🎨 Creando escala adaptativa: Corte máximo -4.57m, Relleno máximo 0.85m
+[11:59:17] 📏 Línea de perfil con etiqueta agregada al pantallazo
+[11:59:17] ✅ Pantallazo de diferencia DEM exportado: E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Planos\P260219_MP_S3_PLAT1.jpg
+[11:59:17] ⚙️ [Paso 3/4] Construyendo perfil de capas (Stack)...
+[11:59:17] 📐 Promedios pares: Par1(P1-P2/P3-P4)=175.83m, Par2(P1-P3/P2-P4)=175.45m, Par3(P1-P4/P2-P3)=11.80m
+[11:59:17] 📏 Perfil longitudinal: entre medios de P1-P4 y P2-P3
+[11:59:17] ✅ Línea central cargada desde 'Eje Central' (260219_MP_S3_PLAT1)
+[11:59:17] 📐 Muestreando modelo de multicapas en el terreno...
+[11:59:17] ✅ Perfil Stack Generado: E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Perfiles\PERFIL_260219_MP_S3_PLAT1.jpg (2 capas)
+[11:59:17] ⚙️ [Paso 4/4] Iniciando Pegado Incremental...
+[11:59:17] 💾 Guardando backup en snapshot_260219_MP_S3_PLAT1.tif...
+[11:59:22] ⚙️ Aplicando talud. Tamaño matriz: (10242, 19035)
+[11:59:58] ✅ Parche '260219_MP_S3_PLAT1' pegado correctamente sobre 'DEM_MP_260130' con suavizado
+[11:59:58] ✔️ Fila completada exitosamente: 260219_MP_S3_PLAT1
+[11:59:58] ⚙️ [Paso 1/4] Calculando volúmenes para 260220_MP_S5_BADEN...
+[11:59:58] 📊 Filtrado de outliers para 260220_MP_S5_BADEN:
+[11:59:58]    🔢 Píxeles válidos: 205298
+[11:59:58]    📈 Rango original: 0.0001m - 6.5330m
+[11:59:58]    🎯 Percentiles P1/P95: 0.0220m - 3.0882m
+[11:59:58]    🚫 Outliers eliminados: 12316 píxeles (2051 bajos, 10265 altos)
+[11:59:58]    ✅ Rango filtrado: 0.0220m - 3.0882m
+[11:59:58]    📉 Espesor máximo reducido en 52.7% (6.5330m → 3.0882m)
+[11:59:58] ✔️ Campos de volúmenes y espesores actualizados en la tabla para 260220_MP_S5_BADEN
+[11:59:58] ✔️ Volúmenes y espesores calculados para 260220_MP_S5_BADEN: Corte=2328.39 m³, Relleno=89.29 m³, Espesor medio=-1.0895m, Espesor mínimo=0.022m, Espesor máximo=3.0882m
+[11:59:58] ⚙️ [Paso 2/4] Preparando pantallazos de diferencias...
+[11:59:58] 📐 Promedios pares: Par1(P1-P2/P3-P4)=60.68m, Par2(P1-P3/P2-P4)=42.08m, Par3(P1-P4/P2-P3)=44.69m
+[11:59:58] 📏 Perfil longitudinal: entre medios de P1-P3 y P2-P4
+[11:59:58] ✅ Línea central cargada desde 'Eje Central' (260220_MP_S5_BADEN)
+[11:59:58] ✅ Diferencia calculada: 260220_MP_S5_BADEN
+[11:59:58] 📸 Exportando layout a E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Planos\P260220_MP_S5_BADEN.jpg...
+[11:59:58] ⚙️ Aplicando simbología adaptativa para corte/relleno en Diff_260220_MP_S5_BADEN...
+[11:59:58] 🎨 Creando escala adaptativa: Corte máximo -6.51m, Relleno máximo 1.23m
+[11:59:59] 📏 Línea de perfil con etiqueta agregada al pantallazo
+[11:59:59] ✅ Pantallazo de diferencia DEM exportado: E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Planos\P260220_MP_S5_BADEN.jpg
+[11:59:59] ⚙️ [Paso 3/4] Construyendo perfil de capas (Stack)...
+[11:59:59] 📐 Promedios pares: Par1(P1-P2/P3-P4)=60.68m, Par2(P1-P3/P2-P4)=42.08m, Par3(P1-P4/P2-P3)=44.69m
+[11:59:59] 📏 Perfil longitudinal: entre medios de P1-P3 y P2-P4
+[11:59:59] ✅ Línea central cargada desde 'Eje Central' (260220_MP_S5_BADEN)
+[11:59:59] 📐 Muestreando modelo de multicapas en el terreno...
+[11:59:59] ✅ Perfil Stack Generado: E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Perfiles\PERFIL_260220_MP_S5_BADEN.jpg (2 capas)
+[11:59:59] ⚙️ [Paso 4/4] Iniciando Pegado Incremental...
+[11:59:59] 💾 Guardando backup en snapshot_260220_MP_S5_BADEN.tif...
+[12:00:03] ⚙️ Aplicando talud. Tamaño matriz: (10242, 19035)
+[12:00:39] ✅ Parche '260220_MP_S5_BADEN' pegado correctamente sobre 'DEM_MP_260130' con suavizado
+[12:00:39] ✔️ Fila completada exitosamente: 260220_MP_S5_BADEN
+[12:00:39] ⚙️ [Paso 1/4] Calculando volúmenes para 260224_MP_S4_COR LADO CUBETA REV CRITICA...
+[12:00:39] ⚠️ CRS inválido para TIN 260224_MP_S4_COR LADO CUBETA REV CRITICA, asignando CRS del proyecto: EPSG:32719
+[12:00:39] 📊 Filtrado de outliers para 260224_MP_S4_COR LADO CUBETA REV CRITICA:
+[12:00:39]    🔢 Píxeles válidos: 19308
+[12:00:39]    📈 Rango original: 0.1539m - 0.8554m
+[12:00:39]    🎯 Percentiles P1/P95: 0.1777m - 0.7471m
+[12:00:39]    🚫 Outliers eliminados: 1160 píxeles (194 bajos, 966 altos)
+[12:00:39]    ✅ Rango filtrado: 0.1777m - 0.7471m
+[12:00:39]    📉 Espesor máximo reducido en 12.7% (0.8554m → 0.7471m)
+[12:00:39] ✔️ Campos de volúmenes y espesores actualizados en la tabla para 260224_MP_S4_COR LADO CUBETA REV CRITICA
+[12:00:39] ✔️ Volúmenes y espesores calculados para 260224_MP_S4_COR LADO CUBETA REV CRITICA: Corte=0.00 m³, Relleno=74.63 m³, Espesor medio=0.3865m, Espesor mínimo=0.1777m, Espesor máximo=0.7471m
+[12:00:39] ⚙️ [Paso 2/4] Preparando pantallazos de diferencias...
+[12:00:39] 📐 Promedios pares: Par1(P1-P2/P3-P4)=55.70m, Par2(P1-P3/P2-P4)=55.57m, Par3(P1-P4/P2-P3)=3.81m
+[12:00:39] 📏 Perfil longitudinal: entre medios de P1-P4 y P2-P3
+[12:00:39] ✅ Línea central cargada desde 'Eje Central' (260224_MP_S4_COR LADO CUBETA REV CRITICA)
+[12:00:39] ✅ Diferencia calculada: 260224_MP_S4_COR LADO CUBETA REV CRITICA
+[12:00:39] 📸 Exportando layout a E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Planos\P260224_MP_S4_COR LADO CUBETA REV CRITICA.jpg...
+[12:00:39] ⚙️ Aplicando simbología adaptativa para corte/relleno en Diff_260224_MP_S4_COR LADO CUBETA REV CRITICA...
+[12:00:39] 🎨 Creando escala adaptativa: Corte máximo 0.15m, Relleno máximo 0.86m
+[12:00:39] 📏 Línea de perfil con etiqueta agregada al pantallazo
+[12:00:39] ✅ Pantallazo de diferencia DEM exportado: E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Planos\P260224_MP_S4_COR LADO CUBETA REV CRITICA.jpg
+[12:00:39] ⚙️ [Paso 3/4] Construyendo perfil de capas (Stack)...
+[12:00:39] 📐 Promedios pares: Par1(P1-P2/P3-P4)=55.70m, Par2(P1-P3/P2-P4)=55.57m, Par3(P1-P4/P2-P3)=3.81m
+[12:00:39] 📏 Perfil longitudinal: entre medios de P1-P4 y P2-P3
+[12:00:39] ✅ Línea central cargada desde 'Eje Central' (260224_MP_S4_COR LADO CUBETA REV CRITICA)
+[12:00:39] 📐 Muestreando modelo de multicapas en el terreno...
+[12:00:39] ✅ Perfil Stack Generado: E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Perfiles\PERFIL_260224_MP_S4_COR LADO CUBETA REV CRITICA.jpg (2 capas)
+[12:00:39] ⚙️ [Paso 4/4] Iniciando Pegado Incremental...
+[12:00:39] 💾 Guardando backup en snapshot_260224_MP_S4_COR LADO CUBETA REV CRITICA.tif...
+[12:00:44] ⚙️ Aplicando talud. Tamaño matriz: (10242, 19035)
+[12:01:20] ✅ Parche '260224_MP_S4_COR LADO CUBETA REV CRITICA' pegado correctamente sobre 'DEM_MP_260130' con suavizado
+[12:01:20] ✔️ Fila completada exitosamente: 260224_MP_S4_COR LADO CUBETA REV CRITICA
+[12:01:20] ⚙️ [Paso 1/4] Calculando volúmenes para 260224_MP_S5_COR LADO CUBETA REV CRITICA...
+[12:01:20] ⚠️ CRS inválido para TIN 260224_MP_S5_COR LADO CUBETA REV CRITICA, asignando CRS del proyecto: EPSG:32719
+[12:01:20] 📊 Filtrado de outliers para 260224_MP_S5_COR LADO CUBETA REV CRITICA:
+[12:01:20]    🔢 Píxeles válidos: 119851
+[12:01:20]    📈 Rango original: 0.0023m - 0.8462m
+[12:01:20]    🎯 Percentiles P1/P95: 0.0658m - 0.4558m
+[12:01:20]    🚫 Outliers eliminados: 7192 píxeles (1199 bajos, 5993 altos)
+[12:01:20]    ✅ Rango filtrado: 0.0658m - 0.4558m
+[12:01:20]    📉 Espesor máximo reducido en 46.1% (0.8462m → 0.4558m)
+[12:01:20] ✔️ Campos de volúmenes y espesores actualizados en la tabla para 260224_MP_S5_COR LADO CUBETA REV CRITICA
+[12:01:20] ✔️ Volúmenes y espesores calculados para 260224_MP_S5_COR LADO CUBETA REV CRITICA: Corte=0.02 m³, Relleno=332.06 m³, Espesor medio=0.2770m, Espesor mínimo=0.0658m, Espesor máximo=0.4558m
+[12:01:20] ⚙️ [Paso 2/4] Preparando pantallazos de diferencias...
+[12:01:20] 📐 Promedios pares: Par1(P1-P2/P3-P4)=200.04m, Par2(P1-P3/P2-P4)=199.98m, Par3(P1-P4/P2-P3)=4.83m
+[12:01:20] 📏 Perfil longitudinal: entre medios de P1-P4 y P2-P3
+[12:01:20] ✅ Línea central cargada desde 'Eje Central' (260224_MP_S5_COR LADO CUBETA REV CRITICA)
+[12:01:20] ✅ Diferencia calculada: 260224_MP_S5_COR LADO CUBETA REV CRITICA
+[12:01:20] 📸 Exportando layout a E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Planos\P260224_MP_S5_COR LADO CUBETA REV CRITICA.jpg...
+[12:01:20] ⚙️ Aplicando simbología adaptativa para corte/relleno en Diff_260224_MP_S5_COR LADO CUBETA REV CRITICA...
+[12:01:20] 🎨 Creando escala adaptativa: Corte máximo -0.13m, Relleno máximo 0.85m
+[12:01:20] 📏 Línea de perfil con etiqueta agregada al pantallazo
+[12:01:21] ✅ Pantallazo de diferencia DEM exportado: E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Planos\P260224_MP_S5_COR LADO CUBETA REV CRITICA.jpg
+[12:01:21] ⚙️ [Paso 3/4] Construyendo perfil de capas (Stack)...
+[12:01:21] 📐 Promedios pares: Par1(P1-P2/P3-P4)=200.04m, Par2(P1-P3/P2-P4)=199.98m, Par3(P1-P4/P2-P3)=4.83m
+[12:01:21] 📏 Perfil longitudinal: entre medios de P1-P4 y P2-P3
+[12:01:21] ✅ Línea central cargada desde 'Eje Central' (260224_MP_S5_COR LADO CUBETA REV CRITICA)
+[12:01:21] 📐 Muestreando modelo de multicapas en el terreno...
+[12:01:21] ✅ Perfil Stack Generado: E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Perfiles\PERFIL_260224_MP_S5_COR LADO CUBETA REV CRITICA.jpg (2 capas)
+[12:01:21] ⚙️ [Paso 4/4] Iniciando Pegado Incremental...
+[12:01:21] 💾 Guardando backup en snapshot_260224_MP_S5_COR LADO CUBETA REV CRITICA.tif...
+[12:01:26] ⚙️ Aplicando talud. Tamaño matriz: (10242, 19035)
+[12:02:03] ✅ Parche '260224_MP_S5_COR LADO CUBETA REV CRITICA' pegado correctamente sobre 'DEM_MP_260130' con suavizado
+[12:02:03] ✔️ Fila completada exitosamente: 260224_MP_S5_COR LADO CUBETA REV CRITICA
+[12:02:03] ⚙️ [Paso 1/4] Calculando volúmenes para 260225_ME_S1_PLAT1 A...
+[12:02:03] ⚠️ CRS inválido para TIN 260225_ME_S1_PLAT1 A, asignando CRS del proyecto: EPSG:32719
+[12:02:03] 📊 Filtrado de outliers para 260225_ME_S1_PLAT1 A:
+[12:02:03]    🔢 Píxeles válidos: 26800
+[12:02:03]    📈 Rango original: 0.0000m - 0.5808m
+[12:02:03]    🎯 Percentiles P1/P95: 0.0033m - 0.4901m
+[12:02:03]    🚫 Outliers eliminados: 1608 píxeles (268 bajos, 1340 altos)
+[12:02:03]    ✅ Rango filtrado: 0.0100m - 0.4901m
+[12:02:03]    📉 Espesor máximo reducido en 15.6% (0.5808m → 0.4901m)
+[12:02:03] ✔️ Campos de volúmenes y espesores actualizados en la tabla para 260225_ME_S1_PLAT1 A
+[12:02:03] ✔️ Volúmenes y espesores calculados para 260225_ME_S1_PLAT1 A: Corte=50.44 m³, Relleno=2.47 m³, Espesor medio=-0.1790m, Espesor mínimo=0.01m, Espesor máximo=0.4901m
+[12:02:03] ⚙️ [Paso 2/4] Preparando pantallazos de diferencias...
+[12:02:03] 📐 Promedios pares: Par1(P1-P2/P3-P4)=103.83m, Par2(P1-P3/P2-P4)=2.79m, Par3(P1-P4/P2-P3)=103.79m
+[12:02:03] 📏 Perfil longitudinal: entre medios de P1-P3 y P2-P4
+[12:02:03] ✅ Línea central cargada desde 'Eje Central' (260225_ME_S1_PLAT1 A)
+[12:02:03] ✅ Diferencia calculada: 260225_ME_S1_PLAT1 A
+[12:02:03] 📸 Exportando layout a E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Planos\P260225_ME_S1_PLAT1 A.jpg...
+[12:02:03] ⚙️ Aplicando simbología adaptativa para corte/relleno en Diff_260225_ME_S1_PLAT1 A...
+[12:02:03] 🎨 Creando escala adaptativa: Corte máximo -0.58m, Relleno máximo 0.18m
+[12:02:04] 📏 Línea de perfil con etiqueta agregada al pantallazo
+[12:02:04] ✅ Pantallazo de diferencia DEM exportado: E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Planos\P260225_ME_S1_PLAT1 A.jpg
+[12:02:04] ⚙️ [Paso 3/4] Construyendo perfil de capas (Stack)...
+[12:02:04] 📐 Promedios pares: Par1(P1-P2/P3-P4)=103.83m, Par2(P1-P3/P2-P4)=2.79m, Par3(P1-P4/P2-P3)=103.79m
+[12:02:04] 📏 Perfil longitudinal: entre medios de P1-P3 y P2-P4
+[12:02:04] ✅ Línea central cargada desde 'Eje Central' (260225_ME_S1_PLAT1 A)
+[12:02:04] 📐 Muestreando modelo de multicapas en el terreno...
+[12:02:04] ✅ Perfil Stack Generado: E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Perfiles\PERFIL_260225_ME_S1_PLAT1 A.jpg (2 capas)
+[12:02:04] ⚙️ [Paso 4/4] Iniciando Pegado Incremental...
+[12:02:04] 💾 Guardando backup en snapshot_260225_ME_S1_PLAT1 A.tif...
+[12:02:07] ⚙️ Aplicando talud. Tamaño matriz: (10032, 10185)
+[12:02:27] ✅ Parche '260225_ME_S1_PLAT1 A' pegado correctamente sobre 'DEM_ME_260203' con suavizado
+[12:02:28] ✔️ Fila completada exitosamente: 260225_ME_S1_PLAT1 A
+[12:02:28] ⚙️ [Paso 1/4] Calculando volúmenes para 260225_ME_S1_PLAT1 B...
+[12:02:28] ⚠️ CRS inválido para TIN 260225_ME_S1_PLAT1 B, asignando CRS del proyecto: EPSG:32719
+[12:02:28] 📊 Filtrado de outliers para 260225_ME_S1_PLAT1 B:
+[12:02:28]    🔢 Píxeles válidos: 26535
+[12:02:28]    📈 Rango original: 0.0000m - 0.7485m
+[12:02:28]    🎯 Percentiles P1/P95: 0.0157m - 0.6244m
+[12:02:28]    🚫 Outliers eliminados: 1593 píxeles (266 bajos, 1327 altos)
+[12:02:28]    ✅ Rango filtrado: 0.0157m - 0.6244m
+[12:02:28]    📉 Espesor máximo reducido en 16.6% (0.7485m → 0.6244m)
+[12:02:28] ✔️ Campos de volúmenes y espesores actualizados en la tabla para 260225_ME_S1_PLAT1 B
+[12:02:28] ✔️ Volúmenes y espesores calculados para 260225_ME_S1_PLAT1 B: Corte=0.41 m³, Relleno=88.83 m³, Espesor medio=0.3332m, Espesor mínimo=0.0157m, Espesor máximo=0.6244m
+[12:02:28] ⚙️ [Paso 2/4] Preparando pantallazos de diferencias...
+[12:02:28] 📐 Promedios pares: Par1(P1-P2/P3-P4)=99.04m, Par2(P1-P3/P2-P4)=2.83m, Par3(P1-P4/P2-P3)=99.00m
+[12:02:28] 📏 Perfil longitudinal: entre medios de P1-P3 y P2-P4
+[12:02:28] ✅ Línea central cargada desde 'Eje Central' (260225_ME_S1_PLAT1 B)
+[12:02:28] ✅ Diferencia calculada: 260225_ME_S1_PLAT1 B
+[12:02:28] 📸 Exportando layout a E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Planos\P260225_ME_S1_PLAT1 B.jpg...
+[12:02:28] ⚙️ Aplicando simbología adaptativa para corte/relleno en Diff_260225_ME_S1_PLAT1 B...
+[12:02:28] 🎨 Creando escala adaptativa: Corte máximo -0.19m, Relleno máximo 0.75m
+[12:02:28] 📏 Línea de perfil con etiqueta agregada al pantallazo
+[12:02:28] ✅ Pantallazo de diferencia DEM exportado: E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Planos\P260225_ME_S1_PLAT1 B.jpg
+[12:02:28] ⚙️ [Paso 3/4] Construyendo perfil de capas (Stack)...
+[12:02:28] 📐 Promedios pares: Par1(P1-P2/P3-P4)=99.04m, Par2(P1-P3/P2-P4)=2.83m, Par3(P1-P4/P2-P3)=99.00m
+[12:02:28] 📏 Perfil longitudinal: entre medios de P1-P3 y P2-P4
+[12:02:28] ✅ Línea central cargada desde 'Eje Central' (260225_ME_S1_PLAT1 B)
+[12:02:28] 📐 Muestreando modelo de multicapas en el terreno...
+[12:02:28] ✅ Perfil Stack Generado: E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Perfiles\PERFIL_260225_ME_S1_PLAT1 B.jpg (2 capas)
+[12:02:28] ⚙️ [Paso 4/4] Iniciando Pegado Incremental...
+[12:02:28] 💾 Guardando backup en snapshot_260225_ME_S1_PLAT1 B.tif...
+[12:02:31] ⚙️ Aplicando talud. Tamaño matriz: (10032, 10185)
+[12:02:51] ✅ Parche '260225_ME_S1_PLAT1 B' pegado correctamente sobre 'DEM_ME_260203' con suavizado
+[12:02:52] ✔️ Fila completada exitosamente: 260225_ME_S1_PLAT1 B
+[12:02:52] ⚙️ [Paso 1/4] Calculando volúmenes para 260225_ME_S3_PLAT1...
+[12:02:52] ⚠️ CRS inválido para TIN 260225_ME_S3_PLAT1, asignando CRS del proyecto: EPSG:32719
+[12:02:52] 📊 Filtrado de outliers para 260225_ME_S3_PLAT1:
+[12:02:52]    🔢 Píxeles válidos: 47869
+[12:02:52]    📈 Rango original: 0.0000m - 1.1268m
+[12:02:52]    🎯 Percentiles P1/P95: 0.0037m - 0.9562m
+[12:02:52]    🚫 Outliers eliminados: 2873 píxeles (479 bajos, 2394 altos)
+[12:02:52]    ✅ Rango filtrado: 0.0100m - 0.9562m
+[12:02:52]    📉 Espesor máximo reducido en 15.1% (1.1268m → 0.9562m)
+[12:02:52] ✔️ Campos de volúmenes y espesores actualizados en la tabla para 260225_ME_S3_PLAT1
+[12:02:52] ✔️ Volúmenes y espesores calculados para 260225_ME_S3_PLAT1: Corte=1.15 m³, Relleno=242.25 m³, Espesor medio=0.5037m, Espesor mínimo=0.01m, Espesor máximo=0.9562m
+[12:02:52] ⚙️ [Paso 2/4] Preparando pantallazos de diferencias...
+[12:02:52] 📐 Promedios pares: Par1(P1-P2/P3-P4)=125.75m, Par2(P1-P3/P2-P4)=2.95m, Par3(P1-P4/P2-P3)=125.73m
+[12:02:52] 📏 Perfil longitudinal: entre medios de P1-P3 y P2-P4
+[12:02:52] ✅ Línea central cargada desde 'Eje Central' (260225_ME_S3_PLAT1)
+[12:02:52] ✅ Diferencia calculada: 260225_ME_S3_PLAT1
+[12:02:52] 📸 Exportando layout a E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Planos\P260225_ME_S3_PLAT1.jpg...
+[12:02:52] ⚙️ Aplicando simbología adaptativa para corte/relleno en Diff_260225_ME_S3_PLAT1...
+[12:02:52] 🎨 Creando escala adaptativa: Corte máximo -0.14m, Relleno máximo 1.13m
+[12:02:52] 📏 Línea de perfil con etiqueta agregada al pantallazo
+[12:02:52] ✅ Pantallazo de diferencia DEM exportado: E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Planos\P260225_ME_S3_PLAT1.jpg
+[12:02:52] ⚙️ [Paso 3/4] Construyendo perfil de capas (Stack)...
+[12:02:52] 📐 Promedios pares: Par1(P1-P2/P3-P4)=125.75m, Par2(P1-P3/P2-P4)=2.95m, Par3(P1-P4/P2-P3)=125.73m
+[12:02:52] 📏 Perfil longitudinal: entre medios de P1-P3 y P2-P4
+[12:02:52] ✅ Línea central cargada desde 'Eje Central' (260225_ME_S3_PLAT1)
+[12:02:52] 📐 Muestreando modelo de multicapas en el terreno...
+[12:02:52] ✅ Perfil Stack Generado: E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Perfiles\PERFIL_260225_ME_S3_PLAT1.jpg (2 capas)
+[12:02:52] ⚙️ [Paso 4/4] Iniciando Pegado Incremental...
+[12:02:52] 💾 Guardando backup en snapshot_260225_ME_S3_PLAT1.tif...
+[12:02:55] ⚙️ Aplicando talud. Tamaño matriz: (10032, 10185)
+[12:03:16] ✅ Parche '260225_ME_S3_PLAT1' pegado correctamente sobre 'DEM_ME_260203' con suavizado
+[12:03:16] ✔️ Fila completada exitosamente: 260225_ME_S3_PLAT1
+[12:03:16] ⚙️ [Paso 1/4] Calculando volúmenes para 260225_MP_S5_PLAT TALUD MEDIO...
+[12:03:16] 📊 Filtrado de outliers para 260225_MP_S5_PLAT TALUD MEDIO:
+[12:03:16]    🔢 Píxeles válidos: 417803
+[12:03:16]    📈 Rango original: 0.0001m - 3.4606m
+[12:03:16]    🎯 Percentiles P1/P95: 0.0105m - 1.7684m
+[12:03:16]    🚫 Outliers eliminados: 25068 píxeles (4177 bajos, 20891 altos)
+[12:03:16]    ✅ Rango filtrado: 0.0105m - 1.7684m
+[12:03:16]    📉 Espesor máximo reducido en 48.9% (3.4606m → 1.7684m)
+[12:03:16] ✔️ Campos de volúmenes y espesores actualizados en la tabla para 260225_MP_S5_PLAT TALUD MEDIO
+[12:03:16] ✔️ Volúmenes y espesores calculados para 260225_MP_S5_PLAT TALUD MEDIO: Corte=2248.20 m³, Relleno=601.96 m³, Espesor medio=-0.3942m, Espesor mínimo=0.0105m, Espesor máximo=1.7684m
+[12:03:16] ⚙️ [Paso 2/4] Preparando pantallazos de diferencias...
+[12:03:16] 📐 Promedios pares: Par1(P1-P2/P3-P4)=157.86m, Par2(P1-P3/P2-P4)=156.39m, Par3(P1-P4/P2-P3)=22.45m
+[12:03:16] 📏 Perfil longitudinal: entre medios de P1-P4 y P2-P3
+[12:03:16] ✅ Línea central cargada desde 'Eje Central' (260225_MP_S5_PLAT TALUD MEDIO)
+[12:03:16] ✅ Diferencia calculada: 260225_MP_S5_PLAT TALUD MEDIO
+[12:03:16] 📸 Exportando layout a E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Planos\P260225_MP_S5_PLAT TALUD MEDIO.jpg...
+[12:03:16] ⚙️ Aplicando simbología adaptativa para corte/relleno en Diff_260225_MP_S5_PLAT TALUD MEDIO...
+[12:03:16] 🎨 Creando escala adaptativa: Corte máximo -3.47m, Relleno máximo 1.24m
+[12:03:17] 📏 Línea de perfil con etiqueta agregada al pantallazo
+[12:03:17] ✅ Pantallazo de diferencia DEM exportado: E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Planos\P260225_MP_S5_PLAT TALUD MEDIO.jpg
+[12:03:17] ⚙️ [Paso 3/4] Construyendo perfil de capas (Stack)...
+[12:03:17] 📐 Promedios pares: Par1(P1-P2/P3-P4)=157.86m, Par2(P1-P3/P2-P4)=156.39m, Par3(P1-P4/P2-P3)=22.45m
+[12:03:17] 📏 Perfil longitudinal: entre medios de P1-P4 y P2-P3
+[12:03:17] ✅ Línea central cargada desde 'Eje Central' (260225_MP_S5_PLAT TALUD MEDIO)
+[12:03:17] 📐 Muestreando modelo de multicapas en el terreno...
+[12:03:17] ✅ Perfil Stack Generado: E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Perfiles\PERFIL_260225_MP_S5_PLAT TALUD MEDIO.jpg (2 capas)
+[12:03:17] ⚙️ [Paso 4/4] Iniciando Pegado Incremental...
+[12:03:17] 💾 Guardando backup en snapshot_260225_MP_S5_PLAT TALUD MEDIO.tif...
+[12:03:21] ⚙️ Aplicando talud. Tamaño matriz: (10242, 19035)
+[12:03:59] ✅ Parche '260225_MP_S5_PLAT TALUD MEDIO' pegado correctamente sobre 'DEM_MP_260130' con suavizado
+[12:03:59] ✔️ Fila completada exitosamente: 260225_MP_S5_PLAT TALUD MEDIO
+[12:03:59] ⚙️ [Paso 1/4] Calculando volúmenes para 260225_MP_S5_TALUD MEDIO...
+[12:03:59] ⚠️ CRS inválido para TIN 260225_MP_S5_TALUD MEDIO, asignando CRS del proyecto: EPSG:32719
+[12:04:00] 📊 Filtrado de outliers para 260225_MP_S5_TALUD MEDIO:
+[12:04:00]    🔢 Píxeles válidos: 1216506
+[12:04:00]    📈 Rango original: 0.0000m - 3.4229m
+[12:04:00]    🎯 Percentiles P1/P95: 0.0444m - 1.2964m
+[12:04:00]    🚫 Outliers eliminados: 72992 píxeles (12166 bajos, 60826 altos)
+[12:04:00]    ✅ Rango filtrado: 0.0444m - 1.2964m
+[12:04:00]    📉 Espesor máximo reducido en 62.1% (3.4229m → 1.2964m)
+[12:04:00] ✔️ Campos de volúmenes y espesores actualizados en la tabla para 260225_MP_S5_TALUD MEDIO
+[12:04:00] ✔️ Volúmenes y espesores calculados para 260225_MP_S5_TALUD MEDIO: Corte=184.29 m³, Relleno=9133.93 m³, Espesor medio=0.7357m, Espesor mínimo=0.0444m, Espesor máximo=1.2964m
+[12:04:00] ⚙️ [Paso 2/4] Preparando pantallazos de diferencias...
+[12:04:00] 📐 Promedios pares: Par1(P1-P2/P3-P4)=168.42m, Par2(P1-P3/P2-P4)=156.58m, Par3(P1-P4/P2-P3)=70.09m
+[12:04:00] 📏 Perfil longitudinal: entre medios de P1-P4 y P2-P3
+[12:04:00] ✅ Línea central cargada desde 'Eje Central' (260225_MP_S5_TALUD MEDIO)
+[12:04:00] ✅ Diferencia calculada: 260225_MP_S5_TALUD MEDIO
+[12:04:00] 📸 Exportando layout a E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Planos\P260225_MP_S5_TALUD MEDIO.jpg...
+[12:04:00] ⚙️ Aplicando simbología adaptativa para corte/relleno en Diff_260225_MP_S5_TALUD MEDIO...
+[12:04:00] 🎨 Creando escala adaptativa: Corte máximo -1.12m, Relleno máximo 3.42m
+[12:04:00] 📏 Línea de perfil con etiqueta agregada al pantallazo
+[12:04:00] ✅ Pantallazo de diferencia DEM exportado: E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Planos\P260225_MP_S5_TALUD MEDIO.jpg
+[12:04:00] ⚙️ [Paso 3/4] Construyendo perfil de capas (Stack)...
+[12:04:00] 📐 Promedios pares: Par1(P1-P2/P3-P4)=168.42m, Par2(P1-P3/P2-P4)=156.58m, Par3(P1-P4/P2-P3)=70.09m
+[12:04:00] 📏 Perfil longitudinal: entre medios de P1-P4 y P2-P3
+[12:04:00] ✅ Línea central cargada desde 'Eje Central' (260225_MP_S5_TALUD MEDIO)
+[12:04:00] 📐 Muestreando modelo de multicapas en el terreno...
+[12:04:00] ✅ Perfil Stack Generado: E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Perfiles\PERFIL_260225_MP_S5_TALUD MEDIO.jpg (2 capas)
+[12:04:00] ⚙️ [Paso 4/4] Iniciando Pegado Incremental...
+[12:04:00] 💾 Guardando backup en snapshot_260225_MP_S5_TALUD MEDIO.tif...
+[12:04:05] ⚙️ Aplicando talud. Tamaño matriz: (10242, 19035)
+[12:04:41] ✅ Parche '260225_MP_S5_TALUD MEDIO' pegado correctamente sobre 'DEM_MP_260130' con suavizado
+[12:04:41] ✔️ Fila completada exitosamente: 260225_MP_S5_TALUD MEDIO
+[12:04:41] ⚙️ [Paso 1/4] Calculando volúmenes para 260225_MP_S5_TALUD MEDIO BADEN...
+[12:04:41] ⚠️ CRS inválido para TIN 260225_MP_S5_TALUD MEDIO BADEN, asignando CRS del proyecto: EPSG:32719
+[12:04:41] 📊 Filtrado de outliers para 260225_MP_S5_TALUD MEDIO BADEN:
+[12:04:41]    🔢 Píxeles válidos: 209357
+[12:04:41]    📈 Rango original: 0.0000m - 1.6417m
+[12:04:41]    🎯 Percentiles P1/P95: 0.0675m - 1.2050m
+[12:04:41]    🚫 Outliers eliminados: 12562 píxeles (2094 bajos, 10468 altos)
+[12:04:41]    ✅ Rango filtrado: 0.0675m - 1.2050m
+[12:04:41]    📉 Espesor máximo reducido en 26.6% (1.6417m → 1.2050m)
+[12:04:41] ✔️ Campos de volúmenes y espesores actualizados en la tabla para 260225_MP_S5_TALUD MEDIO BADEN
+[12:04:41] ✔️ Volúmenes y espesores calculados para 260225_MP_S5_TALUD MEDIO BADEN: Corte=4.12 m³, Relleno=1679.56 m³, Espesor medio=0.8003m, Espesor mínimo=0.0675m, Espesor máximo=1.205m
+[12:04:41] ⚙️ [Paso 2/4] Preparando pantallazos de diferencias...
+[12:04:41] 📐 Promedios pares: Par1(P1-P2/P3-P4)=66.07m, Par2(P1-P3/P2-P4)=41.94m, Par3(P1-P4/P2-P3)=51.19m
+[12:04:41] 📏 Perfil longitudinal: entre medios de P1-P3 y P2-P4
+[12:04:41] ✅ Línea central cargada desde 'Eje Central' (260225_MP_S5_TALUD MEDIO BADEN)
+[12:04:41] ✅ Diferencia calculada: 260225_MP_S5_TALUD MEDIO BADEN
+[12:04:41] 📸 Exportando layout a E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Planos\P260225_MP_S5_TALUD MEDIO BADEN.jpg...
+[12:04:41] ⚙️ Aplicando simbología adaptativa para corte/relleno en Diff_260225_MP_S5_TALUD MEDIO BADEN...
+[12:04:41] 🎨 Creando escala adaptativa: Corte máximo -1.11m, Relleno máximo 1.64m
+[12:04:41] 📏 Línea de perfil con etiqueta agregada al pantallazo
+[12:04:41] ✅ Pantallazo de diferencia DEM exportado: E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Planos\P260225_MP_S5_TALUD MEDIO BADEN.jpg
+[12:04:41] ⚙️ [Paso 3/4] Construyendo perfil de capas (Stack)...
+[12:04:41] 📐 Promedios pares: Par1(P1-P2/P3-P4)=66.07m, Par2(P1-P3/P2-P4)=41.94m, Par3(P1-P4/P2-P3)=51.19m
+[12:04:41] 📏 Perfil longitudinal: entre medios de P1-P3 y P2-P4
+[12:04:41] ✅ Línea central cargada desde 'Eje Central' (260225_MP_S5_TALUD MEDIO BADEN)
+[12:04:41] 📐 Muestreando modelo de multicapas en el terreno...
+[12:04:41] ✅ Perfil Stack Generado: E:/CANCHAS_QFIELD/QGIS PROCESAMIENTO/Archivos Procesados 2026/febrero/Archivos Procesados Febrero\Perfiles\PERFIL_260225_MP_S5_TALUD MEDIO BADEN.jpg (2 capas)
+[12:04:41] ⚙️ [Paso 4/4] Iniciando Pegado Incremental...
+[12:04:41] 💾 Guardando backup en snapshot_260225_MP_S5_TALUD MEDIO BADEN.tif...
+[12:04:46] ⚙️ Aplicando talud. Tamaño matriz: (10242, 19035)
+[12:05:23] ✅ Parche '260225_MP_S5_TALUD MEDIO BADEN' pegado correctamente sobre 'DEM_MP_260130' con suavizado
+[12:05:23] ✔️ Fila completada exitosamente: 260225_MP_S5_TALUD MEDIO BADEN
+[12:05:24] 🗑️ Se eliminaron 24 archivos temporales.
+[12:05:24] 🎉 ¡Proceso unificado completado exitosamente!
+[12:05:24] 📊 Registros procesados: 24
+
+
+
+
+proceso 4. datos reporte
+
+
+[12:07:16] 🔄 Iniciando proceso completo (fusión + análisis + gráficos)...
+[12:07:16] 📋 Paso 1: Fusión de datos históricos...
+[12:07:16] 🔄 Iniciando fusión de datos...
+[12:07:16] ✅ Tablas encontradas:
+[12:07:16]    • Tabla Base Datos: 24 registros
+[12:07:16]    • DATOS HISTORICOS: 926 registros
+[12:07:16] 📌 Normalizando fechas en: Tabla Base Datos
+[12:07:16] ✅ Formato detectado en Tabla Base Datos: %d-%m-%Y
+[12:07:16]    Ejemplos: ['02-02-2026', '02-02-2026', '02-02-2026']
+[12:07:16] ✅ Normalización de fechas completada: 24 registros procesados, 0 errores
+[12:07:16] 📌 Normalizando fechas en: DATOS HISTORICOS
+[12:07:16] ✅ Formato detectado en DATOS HISTORICOS: %Y-%m-%d
+[12:07:16]    Ejemplos: ['2024-06-03', '2024-06-03', '2024-06-03']
+[12:07:17] ⚠️ Error en registro 880 con valor '22-ago-25': time data '22-ago-25' does not match format '%Y-%m-%d'
+[12:07:17] ✅ Normalización de fechas completada: 925 registros procesados, 1 errores
+[12:07:17] 📝 Copiando datos de 'Tabla Base Datos' a 'DATOS HISTORICOS'...
+[12:07:17] ⚠️ Las tablas tienen diferente número de campos: Base (34) vs Históricos (32)
+[12:07:17] ⚠️ Se copiarán solo los campos coincidentes por nombre
+[12:07:17] ℹ️ Se encontraron 32 campos coincidentes entre las tablas
+[12:07:17] ✅ Fusión completada: 24 registros copiados
+[12:07:17] 📊 Tabla DATOS HISTORICOS ahora tiene 950 registros totales
+[12:07:17] 📊 24 nuevos IDs añadidos
+[12:07:17] ✅ Fusión de datos completada
+[12:07:17] 📊 Registros copiados: 24
+[12:07:17] 📊 Nuevos registros: 24
+[12:07:17] 📋 Total de registros en DATOS HISTORICOS: 950
+[12:07:17] 📋 Total de registros en DATOS HISTORICOS: 950
+[12:07:17] ❌ Error inesperado: name 'os' is not defined
+[12:07:17] Traceback (most recent call last):
+  File "C:\Users/LT_Gabinete_1/AppData/Roaming/QGIS/QGIS3\profiles\default/python/plugins\PLUGIN_Canchas_Las_Tortolas\gui\tabs\reports_tab.py", line 212, in ejecutar_fusion_y_analisis
+    plugin_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+                 ^^
+NameError: name 'os' is not defined. Did you forget to import 'os'

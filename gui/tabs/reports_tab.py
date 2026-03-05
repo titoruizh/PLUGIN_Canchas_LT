@@ -1,3 +1,4 @@
+import os
 from qgis.PyQt import QtWidgets, QtCore
 from qgis.PyQt.QtCore import pyqtSignal
 from qgis.PyQt.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, 
