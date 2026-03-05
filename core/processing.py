@@ -868,7 +868,7 @@ class ProcessingProcessor:
                     options.driverName = "CSV" if formato == "csv" else "ESRI Shapefile"
                     options.fileEncoding = "UTF-8"
                     
-                    error, error_msg = QgsVectorFileWriter.writeAsVectorFormatV3(
+                    error, error_msg, _new_fname = QgsVectorFileWriter.writeAsVectorFormatV3(
                         layer,
                         ruta_salida,
                         QgsProject.instance().transformContext(),

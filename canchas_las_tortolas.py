@@ -54,9 +54,17 @@ class CanchasLasTortolas:
 
     def initGui(self):
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
+        # Acción principal: Pipeline Lineal (nueva UI)
         self.add_action(
-            text='🟠Procesador CANCHAS LT🟠',
+            text='🟠 Canchas LT — Pipeline',
             callback=self.run,
+            parent=self.iface.mainWindow())
+
+        # Acción secundaria: Modo Experto (pestañas originales)
+        self.add_action(
+            text='⚙️ Canchas LT — Modo Experto',
+            callback=self.run_expert,
+            add_to_toolbar=False,  # Solo en menú, no en barra de herramientas
             parent=self.iface.mainWindow())
 
     def unload(self):
@@ -68,10 +76,13 @@ class CanchasLasTortolas:
             self.iface.removeToolBarIcon(action)
 
     def run(self):
-        """Run method that performs all the real work"""
-        # Importar el diálogo
+        """Abre el Pipeline Lineal (nueva ventana unificada)."""
+        from .gui.pipeline_dialog import PipelineDialog
+        dialog = PipelineDialog(parent=self.iface.mainWindow())
+        dialog.exec_()
+
+    def run_expert(self):
+        """Abre el modo experto con pestañas (UI original — respaldo)."""
         from .canchas_dialog import CanchasDialog
-        
-        # Crear y mostrar el diálogo
         dialog = CanchasDialog()
         dialog.exec_()

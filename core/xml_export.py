@@ -148,7 +148,10 @@ class XMLExportProcessor:
             levantamientos_procesados += 1
             progreso = int((levantamientos_procesados / total_levantamientos) * 90) + 5  # 5-95%
             
-            nombre_archivo = lev_feat["NombreArchivo"]
+            nombre_archivo = str(lev_feat["NombreArchivo"] or "")
+            if not nombre_archivo:
+                self.log_callback(f"⚠️ Feature {levantamientos_procesados}: NombreArchivo vacío, saltando.")
+                continue
             base = os.path.splitext(os.path.basename(nombre_archivo))[0]
             
             self.progress_callback(progreso, f"Procesando {base}...")

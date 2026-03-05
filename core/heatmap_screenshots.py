@@ -22,8 +22,9 @@ class HeatmapScreenshotGenerator:
     del script PANTALLAZOS_heatmap_final.py
     """
     
-    def __init__(self, proc_root="", progress_callback=None, log_callback=None):
+    def __init__(self, proc_root="", background_layer_name="tif", progress_callback=None, log_callback=None):
         self.proc_root = proc_root
+        self.background_layer_name = background_layer_name  # nombre de la capa raster de fondo (igual al configurado en Paso 4)
         self.progress_callback = progress_callback
         self.log_callback = log_callback
         
@@ -74,28 +75,47 @@ class HeatmapScreenshotGenerator:
             os.makedirs(carpeta_pantallazos, exist_ok=True)
             self.log_message(f"📁 Carpeta de pantallazos heatmap creada: {carpeta_pantallazos}")
             
-            # Obtener capas necesarias
+            # Obtener capas necesarias — búsqueda tolerante (case-insensitive)
+            # La capa de fondo se busca por el nombre configurado en Paso 4 (self.background_layer_name)
             tabla_base_layer = None
             datos_historicos_layer = None
             poligonos_layer = None
             tif_layer = None
+            fondo_target = self.background_layer_name.strip().lower()
             
-            for layer in QgsProject.instance().mapLayers().values():
-                if layer.name() == "Tabla Base Datos":
+            all_layers = list(QgsProject.instance().mapLayers().values())
+            self.log_message(f"🔍 Capas cargadas en proyecto ({len(all_layers)}):")
+            self.log_message(f"🎯 Buscando capa de fondo: '{self.background_layer_name}'")
+            for layer in all_layers:
+                lname = layer.name()
+                lname_lower = lname.lower()
+                self.log_message(f"   • [{layer.type()}] {lname}")
+                if lname_lower == "tabla base datos":
                     tabla_base_layer = layer
-                elif layer.name() == "DATOS HISTORICOS":
+                elif lname_lower == "datos historicos":
                     datos_historicos_layer = layer
-                elif layer.name() == "Poligonos_Sectores":
+                elif lname_lower == "poligonos_sectores":
                     poligonos_layer = layer
-                elif layer.name() == "tif":
+                elif lname_lower == fondo_target and layer.type() == 1:  # type 1 == RasterLayer
                     tif_layer = layer
+            
+            # Fallback: si no encontró por nombre exacto, buscar cualquier raster que contenga el nombre
+            if not tif_layer:
+                from qgis.core import QgsMapLayer
+                for layer in all_layers:
+                    if layer.type() == QgsMapLayer.RasterLayer:
+                        lname_lower = layer.name().lower()
+                        if fondo_target in lname_lower or lname_lower.startswith(fondo_target):
+                            self.log_message(f"ℹ️ Capa de fondo encontrada por coincidencia parcial: '{layer.name()}'")
+                            tif_layer = layer
+                            break
             
             if not tabla_base_layer:
                 self.log_message("❌ No se encontró 'Tabla Base Datos'")
                 return {'success': False, 'message': 'No se encontró Tabla Base Datos'}
             
             if not datos_historicos_layer:
-                self.log_message("❌ No se encontró 'DATOS HISTORICOS'")  
+                self.log_message("❌ No se encontró 'DATOS HISTORICOS' (exact: case-insensitive). Verifica que el paso de fusión se ejecutó correctamente.")
                 return {'success': False, 'message': 'No se encontró DATOS HISTORICOS'}
                 
             if not poligonos_layer:
@@ -103,8 +123,8 @@ class HeatmapScreenshotGenerator:
                 return {'success': False, 'message': 'No se encontró Poligonos_Sectores'}
                 
             if not tif_layer:
-                self.log_message("❌ No se encontró 'tif'")
-                return {'success': False, 'message': 'No se encontró capa tif'}
+                self.log_message("❌ No se encontró capa raster de fondo (buscando: 'tif', 'tif*', '*.tif', '*.ecw')")
+                return {'success': False, 'message': 'No se encontró capa tif de fondo'}
             
             # Debug: ver campos disponibles
             self.log_message(f"🔍 Campos en Tabla Base Datos: {[f.name() for f in tabla_base_layer.fields()]}")
@@ -197,7 +217,9 @@ class HeatmapScreenshotGenerator:
                         pantallazos_fallidos += 1
                         
                 except Exception as e:
+                    import traceback
                     self.log_message(f"❌ Error en registro {i+1}: {str(e)}")
+                    self.log_message(traceback.format_exc())
                     pantallazos_fallidos += 1
             
             self.log_message(f"✅ Generación de pantallazos heatmap completada")
