@@ -422,6 +422,54 @@ class TableCreationProcessor:
         except Exception as e:
             self.log_callback(f"❌ Error al actualizar campo 'Plano' para {base}: {e}")
 
+    def _get_historical_protocol_mapping(self):
+        """Devuelve un diccionario {nombre_base: protocolo} y el max_protocolo"""
+        mapping = {}
+        max_proto = 0
+        try:
+            from qgis.core import QgsProject, QgsMapLayer
+            project = QgsProject.instance()
+            layer = None
+            for l in project.mapLayers().values():
+                if l.name() == "DATOS HISTORICOS" and l.type() == QgsMapLayer.VectorLayer:
+                    layer = l
+                    break
+            if layer:
+                idx_plano = layer.fields().lookupField("Plano")
+                
+                # If "Plano" doesn't exist, try "Foto"
+                if idx_plano == -1:
+                    idx_plano = layer.fields().lookupField("Foto")
+                    
+                idx_proto = layer.fields().lookupField("Protocolo Topografico")
+                
+                if idx_proto != -1 and idx_plano != -1:
+                    for f in layer.getFeatures():
+                        val = f.attribute(idx_proto)
+                        pto_num = None
+                        if val is not None:
+                            try:
+                                num = int(val)
+                                if num > max_proto:
+                                    max_proto = num
+                                pto_num = num
+                            except:
+                                pass
+                        
+                        plano_str = str(f.attribute(idx_plano)).strip() if f.attribute(idx_plano) else ""
+                        if plano_str.startswith("P") or plano_str.startswith("F"):
+                            nombre = plano_str[1:]
+                        else:
+                            nombre = plano_str
+                        
+                        if pto_num is not None and nombre:
+                            mapping[nombre] = pto_num
+        except Exception as e:
+            self.log_callback(f"⚠️ Error leyendo históricos para protocolos: {e}")
+            
+        max_proto = max(max_proto, int(self.protocolo_topografico_inicio) - 1)
+        return mapping, max_proto
+
     # ============================================================
     # MÉTODO PRINCIPAL
     # ============================================================
@@ -484,7 +532,7 @@ class TableCreationProcessor:
 
 
             # Procesar cada capa
-            protocolo_val = self.protocolo_topografico_inicio
+            self.hist_mapping, self.current_max_proto = self._get_historical_protocol_mapping()
             total_capas = len(poligonos_layers)
             capas_procesadas = 0
 
@@ -540,12 +588,20 @@ class TableCreationProcessor:
                 metodo_value = info_lev["metodo"]
                 ncapas_value = info_lev["ncapas"]
 
+                # Determinar protocolo a usar (basado únicamente en el nombre_base, ej: 260105_MP_S3)
+                nombre_base_str = base
+                
+                if nombre_base_str in self.hist_mapping:
+                    protocolo_asignar = self.hist_mapping[nombre_base_str]
+                else:
+                    self.current_max_proto += 1
+                    protocolo_asignar = self.current_max_proto
+                    
                 # Extraer vértices extremos y agregar a tabla
                 self.extraer_vertices_extremos(
                     puntos_layer, poligono_layer, base, base, tabla, operador_value,
-                    metodo_value, ncapas_value, tin_nuevo, tin_base, "field_4", protocolo_val
+                    metodo_value, ncapas_value, tin_nuevo, tin_base, "field_4", protocolo_asignar
                 )
-                protocolo_val += 1  # Incrementa para la siguiente fila
 
                 # Actualizar campo plano
                 nombre_imagen = f"P{base}"

@@ -223,20 +223,71 @@ class DataMergeProcessor:
             
             self.log_message(f"ℹ️ Se encontraron {len(mapa_campos)} campos coincidentes entre las tablas")
             
+            # Identificar índices clave para Upsert
+            idx_hist_fecha = campos_historicos.lookupField("Fecha")
+            idx_hist_muro = campos_historicos.lookupField("Muro")
+            idx_hist_sector = campos_historicos.lookupField("Sector")
+            idx_hist_plano = campos_historicos.lookupField("Plano")
+
+            # Mapa de registros existentes para UPSERT
+            # Clave: (fecha, muro, sector, nombre_base) -> Valor: feature_id
+            registros_existentes = {}
+            if idx_hist_fecha != -1 and idx_hist_muro != -1 and idx_hist_sector != -1:
+                self.log_message("🔍 Construyendo índice de registros históricos (Fecha, Muro, Sector, Nombre) para Upsert...")
+                for f in tabla_historicos.getFeatures():
+                    # Extraer el nombre base del campo Plano, ej: P260105_MP_S3 -> 260105_MP_S3
+                    nombre_base = ""
+                    if idx_hist_plano != -1 and f.attribute(idx_hist_plano):
+                        plano_str = str(f.attribute(idx_hist_plano)).strip()
+                        nombre_base = plano_str[1:] if plano_str.startswith("P") else plano_str
+
+                    key = (
+                        str(f.attribute(idx_hist_fecha)).strip() if f.attribute(idx_hist_fecha) else "",
+                        str(f.attribute(idx_hist_muro)).strip() if f.attribute(idx_hist_muro) else "",
+                        str(f.attribute(idx_hist_sector)).strip() if f.attribute(idx_hist_sector) else "",
+                        nombre_base
+                    )
+                    registros_existentes[key] = f.id()
+            
             # Verificar si la capa está en modo de edición, si no, activarlo
             editing_started_copy = False
             if not tabla_historicos.isEditable():
                 tabla_historicos.startEditing()
                 editing_started_copy = True
             
+            registros_actualizados = 0
+            registros_nuevos = 0
+
             try:
-                # Copiar registros
+                # Copiar registros (Upsert)
                 for f_base in tabla_base.getFeatures():
                     new_f = QgsFeature(tabla_historicos.fields())
                     
                     # Copiar valores de campos coincidentes
                     for idx_base, idx_hist in mapa_campos.items():
                         new_f.setAttribute(idx_hist, f_base.attributes()[idx_base])
+                    
+                    # Lógica UPSERT
+                    if idx_hist_fecha != -1 and idx_hist_muro != -1 and idx_hist_sector != -1:
+                        nombre_base_new = ""
+                        if idx_hist_plano != -1 and new_f.attribute(idx_hist_plano):
+                            plano_str = str(new_f.attribute(idx_hist_plano)).strip()
+                            nombre_base_new = plano_str[1:] if plano_str.startswith("P") else plano_str
+
+                        key = (
+                            str(new_f.attribute(idx_hist_fecha)).strip() if new_f.attribute(idx_hist_fecha) else "",
+                            str(new_f.attribute(idx_hist_muro)).strip() if new_f.attribute(idx_hist_muro) else "",
+                            str(new_f.attribute(idx_hist_sector)).strip() if new_f.attribute(idx_hist_sector) else "",
+                            nombre_base_new
+                        )
+                        if key in registros_existentes:
+                            fid = registros_existentes[key]
+                            tabla_historicos.deleteFeature(fid)
+                            registros_actualizados += 1
+                        else:
+                            registros_nuevos += 1
+                    else:
+                        registros_nuevos += 1
                     
                     tabla_historicos.addFeature(new_f)
                     registros_copiados += 1
@@ -251,18 +302,20 @@ class DataMergeProcessor:
             for f in tabla_historicos.getFeatures():
                 ids_despues.add(f.id())
             
-            nuevos_ids = ids_despues - ids_antes
+            nuevos_ids_reales = ids_despues - ids_antes
             
             self.progress_callback(100, "¡Fusión completada!")
-            self.log_message(f"✅ Fusión completada: {registros_copiados} registros copiados")
+            self.log_message(f"✅ Fusión completada: {registros_copiados} procesados en total")
+            if registros_actualizados > 0:
+                self.log_message(f"   🔄 {registros_actualizados} registros antiguos fueron actualizados (Upsert)")
+            self.log_message(f"   ➕ {registros_nuevos} registros fueron añadidos como nuevos")
             self.log_message(f"📊 Tabla DATOS HISTORICOS ahora tiene {tabla_historicos.featureCount()} registros totales")
-            self.log_message(f"📊 {len(nuevos_ids)} nuevos IDs añadidos")
             
             return {
                 'success': True,
-                'message': f'Datos fusionados exitosamente: {registros_copiados} registros copiados',
+                'message': f'Datos fusionados exitosamente: {registros_copiados} registros procesados ({registros_actualizados} actualizados, {registros_nuevos} nuevos)',
                 'registros_copiados': registros_copiados,
-                'nuevos_ids': len(nuevos_ids),
+                'nuevos_ids': len(nuevos_ids_reales),
                 'total_registros': tabla_historicos.featureCount()
             }
             

@@ -292,18 +292,62 @@ class PipelineDialog(QDialog):
         self.chk_points.setChecked(False)
         return g
 
+    def _determinar_protocolo_inicial(self):
+        """Busca DATOS HISTORICOS y extrae el max(Protocolo Topografico) + 1"""
+        try:
+            from qgis.core import QgsProject, QgsMapLayer
+            project = QgsProject.instance()
+            historico_layer = None
+            for layer in project.mapLayers().values():
+                if layer.name() == "DATOS HISTORICOS" and layer.type() == QgsMapLayer.VectorLayer:
+                    historico_layer = layer
+                    break
+            
+            if not historico_layer:
+                return 1, False
+                
+            idx = historico_layer.fields().lookupField("Protocolo Topografico")
+            if idx == -1:
+                return 1, False
+                
+            max_proto = 0
+            for feat in historico_layer.getFeatures():
+                val = feat.attribute(idx)
+                if val is not None:
+                    try:
+                        num = int(val)
+                        if num > max_proto:
+                            max_proto = num
+                    except (ValueError, TypeError):
+                        pass
+                        
+            if max_proto > 0:
+                return max_proto + 1, True
+            return 1, False
+        except Exception:
+            return 1, False
+
     def _build_tabla_section(self) -> QGroupBox:
         g, lay = self._make_group("📋  Tabla Base Datos (Paso 3)")
         row = QHBoxLayout()
         lbl = QLabel("Protocolo topográfico inicial:")
         lbl.setStyleSheet("font-size: 12px;")
         row.addWidget(lbl)
+        
         self.protocolo_inicio = QSpinBox()
-        self.protocolo_inicio.setRange(1, 9999)
-        self.protocolo_inicio.setValue(1)
+        self.protocolo_inicio.setRange(1, 99999)
         self.protocolo_inicio.setStyleSheet(Styles.get_spinbox_style())
         self.protocolo_inicio.setFixedWidth(80)
+        
+        proto_sugerido, is_auto = self._determinar_protocolo_inicial()
+        self.protocolo_inicio.setValue(proto_sugerido)
         row.addWidget(self.protocolo_inicio)
+        
+        if is_auto:
+            help_lbl = QLabel("(Auto-detectado de HISTORICOS)")
+            help_lbl.setStyleSheet("font-size: 10px; color: #27AE60; font-style: italic;")
+            row.addWidget(help_lbl)
+            
         row.addStretch()
         lay.addLayout(row)
         return g
@@ -417,10 +461,16 @@ class PipelineDialog(QDialog):
         self.chk_points.setChecked(s.value("chk_points", False, type=bool))
         self.chk_polygons.setChecked(s.value("chk_polygons", True, type=bool))
         self.chk_tin.setChecked(s.value("chk_tin", True, type=bool))
-        self.protocolo_inicio.setValue(int(s.value("protocolo_inicio", 1)))
+        
+        # Respetar el auto-detectado si existe, de lo contrario cargar guardado
+        proto_sugerido, is_auto = self._determinar_protocolo_inicial()
+        if not is_auto:
+            self.protocolo_inicio.setValue(int(s.value("protocolo_inicio", 1)))
+            
         self.num_random_points.setValue(int(s.value("num_random_points", 20)))
         self.min_espesor.setText(s.value("min_espesor", "0.01"))
-        idx = self.resample_algorithm.findText(s.value("resample_algorithm", "bilinear"))
+        # Forzar 'bilinear' por default como solicitado
+        idx = self.resample_algorithm.findText("bilinear")
         if idx >= 0:
             self.resample_algorithm.setCurrentIndex(idx)
         self.screenshot_width.setValue(int(s.value("screenshot_width", 800)))
@@ -564,6 +614,12 @@ class PipelineDialog(QDialog):
                 self._log(f"❌ Falló Paso 1: {res.get('message', 'Error desconocido')}")
                 return
             self._log("✅ Paso 1 completado")
+            
+            # ----------------------------------------------------------
+            # BACKUP INICIAL DE DEMs
+            # ----------------------------------------------------------
+            self._backup_initial_dems(p['proc_root'])
+
 
             # ----------------------------------------------------------
             # PASO 2/6 — Procesamiento Espacial
@@ -808,7 +864,8 @@ class PipelineDialog(QDialog):
         import shutil
         from qgis.core import (
             QgsProject, QgsVectorFileWriter, QgsVectorLayer,
-            QgsRasterLayer, QgsExpressionContextUtils, QgsCoordinateTransformContext
+            QgsRasterLayer, QgsExpressionContextUtils, QgsCoordinateTransformContext,
+            QgsMapLayer
         )
 
         project = QgsProject.instance()
@@ -874,29 +931,27 @@ class PipelineDialog(QDialog):
         modelos_dir = os.path.join(proc_root, "MODELO FINAL")
         os.makedirs(modelos_dir, exist_ok=True)
 
-        dem_names = ["DEM_MP", "DEM_ME", "DEM_MO"]
-        proj_var_prefix = "dem_work_path_"
+        dem_codes = ["MP", "ME", "MO"]
 
+        for dem_code in dem_codes:
+            prefix_target = f"DEM_{dem_code}"
+            dem_layer = None
+            dem_name = ""
+            
+            # Buscamos la capa que empiece con DEM_MP, DEM_ME o DEM_MO
+            for layer in project.mapLayers().values():
+                if layer.type() == QgsMapLayer.RasterLayer and layer.name().upper().startswith(prefix_target):
+                    dem_layer = layer
+                    dem_name = layer.name()
+                    break
 
-
-        for dem_name in dem_names:
-            # Buscar el layer DEM en el proyecto
-            dem_layers = project.mapLayersByName(dem_name)
-            if not dem_layers:
-                self._log(f"ℹ️ Layer '{dem_name}' no encontrado en proyecto, saltando.")
+            if not dem_layer:
+                self._log(f"ℹ️ Layer DEM para {dem_code} no encontrado en proyecto (buscado como {prefix_target}*), saltando.")
                 continue
-            dem_layer = dem_layers[0]
 
-            # Obtener el path actual (puede ser temp) desde variable de proyecto
-            var_key = proj_var_prefix + dem_name
-            current_path = QgsExpressionContextUtils.projectScope(project).variable(var_key)
-
-            if not current_path or not os.path.exists(str(current_path)):
-                # Fallback: usar el dataSourceUri del layer
-                current_path = dem_layer.dataProvider().dataSourceUri()
-                self._log(f"ℹ️ Variable proyecto '{var_key}' no encontrada, usando dataSourceUri: {current_path}")
-
+            current_path = dem_layer.dataProvider().dataSourceUri()
             current_path = str(current_path).split("|")[0]  # quitar params extra
+            
             if not os.path.exists(current_path):
                 self._log(f"⚠️ No se pudo encontrar el archivo DEM para '{dem_name}': {current_path}")
                 continue
@@ -939,6 +994,34 @@ class PipelineDialog(QDialog):
             self._log(traceback.format_exc())
 
     # ================================================== CLOSE
+    def _backup_initial_dems(self, proc_root):
+        """Copia los DEM_MP, DEM_ME y DEM_MO a PROTOCOLO/MODELO BASE INICIAL"""
+        self._log("⏳ Creando backup de DEMs iniciales...")
+        backup_dir = os.path.join(proc_root, "PROTOCOLO", "MODELO BASE INICIAL")
+        try:
+            os.makedirs(backup_dir, exist_ok=True)
+            project = QgsProject.instance()
+            dem_names = ["DEM_MP", "DEM_ME", "DEM_MO"]
+            import shutil
+            
+            backups_creados = 0
+            for layer in project.mapLayers().values():
+                if layer.name() in dem_names and layer.type() == QgsMapLayer.RasterLayer:
+                    source_path = layer.source()
+                    if os.path.exists(source_path):
+                        ext = os.path.splitext(source_path)[1]
+                        dest_name = f"{layer.name()}_CONSOLIDADO_INICIAL{ext}"
+                        dest_path = os.path.join(backup_dir, dest_name)
+                        shutil.copy2(source_path, dest_path)
+                        self._log(f"   ✔️ {layer.name()} respaldado -> {dest_name}")
+                        backups_creados += 1
+            if backups_creados > 0:
+                self._log(f"✅ Backup de {backups_creados} DEM(s) completado.")
+            else:
+                self._log("⚠️ No se encontraron capas DEM iniciales para respaldar en el proyecto.")
+        except Exception as e:
+            self._log(f"❌ Error al crear backup de DEMs: {e}")
+
     def closeEvent(self, event):
         if self._pipeline_running:
             reply = QMessageBox.question(
