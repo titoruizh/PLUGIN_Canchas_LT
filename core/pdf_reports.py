@@ -88,18 +88,23 @@ class PDFReportsProcessor:
                 if hasattr(item, 'picturePath'):
                     ruta_actual = item.picturePath()
                     
-                    # Si contiene referencias a logo
-                    if 'logo' in ruta_actual.lower():
-                        # Buscar archivo de logo en carpeta logos
-                        for archivo in os.listdir(self.logos_dir):
-                            if archivo.lower().endswith(('.png', '.jpg', '.jpeg')):
-                                nueva_ruta = os.path.join(self.logos_dir, archivo)
-                                item.setPicturePath(nueva_ruta)
-                                self.log_callback(f"✔️ Logo actualizado: {nueva_ruta}")
-                                break
+                    # Si es el logo o contiene referencias
+                    if item.id() == 'LOGO' or 'logo' in ruta_actual.lower():
+                        logo_path = os.path.join(self.logos_dir, "logo.png")
+                        if os.path.exists(logo_path):
+                            item.setPicturePath(logo_path)
+                            self.log_callback(f"✔️ Logo actualizado dinámicamente")
+                        else:
+                            # Fallback: buscar cualquier png/jpg en la carpeta
+                            for archivo in os.listdir(self.logos_dir):
+                                if archivo.lower().endswith(('.png', '.jpg', '.jpeg')):
+                                    nueva_ruta = os.path.join(self.logos_dir, archivo)
+                                    item.setPicturePath(nueva_ruta)
+                                    self.log_callback(f"✔️ Logo actualizado: {nueva_ruta}")
+                                    break
                     
                     # Si contiene referencias a firma
-                    elif 'firma' in ruta_actual.lower():
+                    elif 'firma' in ruta_actual.lower() or item.id() == 'FIRMA':
                         # Esta se actualizará dinámicamente por operador
                         pass
             

@@ -658,6 +658,16 @@ class PipelineDialog(QDialog):
             self._run_paso6(p)
 
             # ----------------------------------------------------------
+            # GUARDAR PROYECTO .qgz
+            # ----------------------------------------------------------
+            self._log("💾 Guardando proyecto QGIS (.qgz)...")
+            try:
+                self._guardar_proyecto_qgz(p['proc_root'])
+            except Exception as e:
+                self._log(f"⚠️ Error al guardar proyecto: {e}")
+                self._log(traceback.format_exc())
+
+            # ----------------------------------------------------------
             # COMPLETADO
             # ----------------------------------------------------------
             self._progress(100, "¡Pipeline completado!")
@@ -784,6 +794,137 @@ class PipelineDialog(QDialog):
             self._log(f"{'✅' if res.get('success') else '⚠️'} Clasificación: {res.get('registros_procesados', 0)} registros")
         except Exception as e:
             self._log(f"⚠️ Error clasificación: {e}")
+
+    # ================================================== GUARDAR PROYECTO
+    def _guardar_proyecto_qgz(self, proc_root: str):
+        """
+        Guarda el proyecto QGIS como .qgz en proc_root al finalizar el pipeline.
+        Pasos:
+          1. Exporta memory layers (Tabla Base Datos, DATOS HISTORICOS) a GeoPackage en proc_root.
+          2. Copia los DEMs finales (posiblemente en /Temp) a proc_root/MODELOS/.
+          3. Redirige los layers DEM a los archivos permanentes.
+          4. Guarda el proyecto como <nombre_carpeta>.qgz.
+        """
+        import shutil
+        from qgis.core import (
+            QgsProject, QgsVectorFileWriter, QgsVectorLayer,
+            QgsRasterLayer, QgsExpressionContextUtils, QgsCoordinateTransformContext
+        )
+
+        project = QgsProject.instance()
+
+        # ---- 1. Exportar memory layers a GeoPackage ----
+        gpkg_path = os.path.join(proc_root, "Tabla Base Datos.gpkg")
+        memory_layer_names = ["Tabla Base Datos", "DATOS HISTORICOS"]
+
+        for lname in memory_layer_names:
+            layers = project.mapLayersByName(lname)
+            if not layers:
+                self._log(f"ℹ️ Layer '{lname}' no encontrado, saltando.")
+                continue
+            layer = layers[0]
+
+            # Solo exportar si es memory layer
+            if layer.dataProvider().name() != "memory":
+                self._log(f"ℹ️ '{lname}' ya tiene fuente permanente, saltando.")
+                continue
+
+            # Nombre de tabla dentro del GPKG (sin espacios para compatibilidad)
+            table_name = lname.replace(" ", "_").replace("°", "N")
+            layer_gpkg_path = f"{gpkg_path}|layername={table_name}"
+
+            options = QgsVectorFileWriter.SaveVectorOptions()
+            options.driverName = "GPKG"
+            options.layerName = table_name
+            options.actionOnExistingFile = (
+                QgsVectorFileWriter.CreateOrOverwriteLayer
+                if os.path.exists(gpkg_path)
+                else QgsVectorFileWriter.CreateOrOverwriteFile
+            )
+
+            write_result = QgsVectorFileWriter.writeAsVectorFormatV3(
+                layer,
+                gpkg_path,
+                QgsCoordinateTransformContext(),
+                options
+            )
+            # writeAsVectorFormatV3 devuelve (error, errMsg, newFilename, newLayer) en QGIS 3.x
+            error = write_result[0]
+            err_msg = write_result[1] if len(write_result) > 1 else ""
+
+            if error == QgsVectorFileWriter.NoError:
+                self._log(f"✅ '{lname}' exportado a GPKG: {table_name}")
+                # Redirigir el layer del proyecto al GPKG
+                # Primero removemos el layer memory y lo reemplazamos con el de archivo
+                layer_id = layer.id()
+                new_layer = QgsVectorLayer(layer_gpkg_path, lname, "ogr")
+                if new_layer.isValid():
+                    project.removeMapLayer(layer_id)
+                    project.addMapLayer(new_layer, False)
+                    # Agregar al root en la misma posición top-level
+                    root = project.layerTreeRoot()
+                    root.insertLayer(0, new_layer)
+                    self._log(f"✅ Layer '{lname}' redirigido al GPKG permanente")
+                else:
+                    self._log(f"⚠️ No se pudo cargar '{lname}' desde GPKG tras exportar")
+            else:
+                self._log(f"⚠️ Error exportando '{lname}' a GPKG: {err_msg}")
+
+        # ---- 2+3. Copiar DEMs finales y redirigir layers ----
+        modelos_dir = os.path.join(proc_root, "MODELO FINAL")
+        os.makedirs(modelos_dir, exist_ok=True)
+
+        dem_names = ["DEM_MP", "DEM_ME", "DEM_MO"]
+        proj_var_prefix = "dem_work_path_"
+
+
+
+        for dem_name in dem_names:
+            # Buscar el layer DEM en el proyecto
+            dem_layers = project.mapLayersByName(dem_name)
+            if not dem_layers:
+                self._log(f"ℹ️ Layer '{dem_name}' no encontrado en proyecto, saltando.")
+                continue
+            dem_layer = dem_layers[0]
+
+            # Obtener el path actual (puede ser temp) desde variable de proyecto
+            var_key = proj_var_prefix + dem_name
+            current_path = QgsExpressionContextUtils.projectScope(project).variable(var_key)
+
+            if not current_path or not os.path.exists(str(current_path)):
+                # Fallback: usar el dataSourceUri del layer
+                current_path = dem_layer.dataProvider().dataSourceUri()
+                self._log(f"ℹ️ Variable proyecto '{var_key}' no encontrada, usando dataSourceUri: {current_path}")
+
+            current_path = str(current_path).split("|")[0]  # quitar params extra
+            if not os.path.exists(current_path):
+                self._log(f"⚠️ No se pudo encontrar el archivo DEM para '{dem_name}': {current_path}")
+                continue
+
+            dest_path = os.path.join(modelos_dir, f"{dem_name}_final.tif")
+            try:
+                shutil.copy2(current_path, dest_path)
+                self._log(f"✅ '{dem_name}' copiado a: {dest_path}")
+            except Exception as e:
+                self._log(f"⚠️ No se pudo copiar '{dem_name}' ({e}). El proyecto apuntará al archivo temporal.")
+                dest_path = current_path  # fallback: apuntar al temp
+
+            # Redirigir el layer al archivo permanente
+            try:
+                dem_layer.setDataSource(dest_path, dem_name, "gdal")
+                dem_layer.triggerRepaint()
+                self._log(f"✅ Layer '{dem_name}' redirigido a ruta permanente")
+            except Exception as e:
+                self._log(f"⚠️ No se pudo redirigir layer '{dem_name}': {e}")
+
+        # ---- 4. Guardar proyecto como .qgz ----
+        qgz_path = os.path.join(proc_root, "PROCESAMIENTO.qgz")
+        project.setFileName(qgz_path)
+        ok = project.write()
+        if ok:
+            self._log(f"✅ Proyecto guardado: {qgz_path}")
+        else:
+            self._log(f"⚠️ Fallo al guardar proyecto en: {qgz_path}")
 
     # ================================================== COMPOSITOR
     def _on_abrir_compositor(self):

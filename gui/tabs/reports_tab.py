@@ -470,6 +470,14 @@ La columna 'Comentarios Espesor' se crea/actualiza automáticamente en 'Tabla Ba
                 self.log_signal.emit(f"❌ Error crítico: No se pudo recuperar el layout '{layout_name}' después de añadirlo.")
                 return False
             
+            # Dinámicamente asignar el logo si existe el item ID "LOGO"
+            logo_item = layout.itemById("LOGO")
+            if logo_item and hasattr(logo_item, 'setPicturePath'):
+                logo_path = os.path.join(plugin_dir, "resources", "logos", "logo.png")
+                if os.path.exists(logo_path):
+                    logo_item.setPicturePath(logo_path)
+                    self.log_signal.emit(f"✔️ Logo en compositor actualizado a ruta local del plugin.")
+            
             # Config Atlas
             tabla_layer = None
             for layer in project.mapLayers().values():
